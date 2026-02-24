@@ -12,35 +12,35 @@ const [,, cmd, ...args] = process.argv;
 const workspace = resolveWorkspace(args);
 
 const USAGE = `
-🗂️  project — OpenClaw Project Manager
+🗂️  project-mgmt — OpenClaw Project Manager
 
 Usage:
-  project setup                                  Interactive config wizard
-  project create --name <name> --root <root>     Create a new project
-           [--description <desc>] [--date YYYY-MM-DD] [--workspace <path>]
-  project list [--root <root>] [--status active|completed|archived]
-  project complete --id <project-id>             Mark a project complete
-  project archive  --id <project-id>             Archive a project
-  project roots                                  List configured roots
-  project help                                   Show this help
+  project-mgmt init                                  Configure project roots (local + vaults)
+  project-mgmt create --name <name> --root <root>    Create a new project
+               [--description <desc>] [--date YYYY-MM-DD] [--workspace <path>]
+  project-mgmt list [--root <root>] [--status active|completed|archived]
+  project-mgmt complete --id <project-id>            Mark a project complete
+  project-mgmt archive  --id <project-id>            Archive a project
+  project-mgmt roots                                 List configured roots
+  project-mgmt help                                  Show this help
 
 Global options:
   --workspace <path>   Override agent workspace path
                        (also: PROJECT_AGENT_WORKSPACE env var)
 
 Examples:
-  project setup
-  project create --name "Sales Pipeline" --root asd-vault --description "Automate lead tracking"
-  project create --name "Internal Tool" --root workspace
-  project list
-  project list --status active --root asd-vault
-  project complete --id 2026.02.24-asd-sales-pipeline
-  project archive  --id 2026.02.24-asd-sales-pipeline
-  project roots
+  project-mgmt init
+  project-mgmt create --name "Sales Pipeline" --root asd-vault --description "Automate lead tracking"
+  project-mgmt create --name "Internal Tool" --root workspace
+  project-mgmt list
+  project-mgmt list --status active --root asd-vault
+  project-mgmt complete --id 2026.02.24-asd-sales-pipeline
+  project-mgmt archive  --id 2026.02.24-asd-sales-pipeline
+  project-mgmt roots
 `.trim();
 
 switch (cmd) {
-  case 'setup':
+  case 'init':
     runSetup(workspace).catch(err => { console.error(err.message); process.exit(1); });
     break;
 

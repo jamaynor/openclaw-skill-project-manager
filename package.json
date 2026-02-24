@@ -4,7 +4,7 @@
   "description": "OpenClaw skill for deterministic project creation and tracking across agent workspaces and Obsidian vaults",
   "main": "index.js",
   "bin": {
-    "project": "./bin/project.js"
+    "project-mgmt": "./bin/project-mgmt.js"
   },
   "scripts": {
     "test": "node test/test.js"
