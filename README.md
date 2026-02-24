@@ -97,8 +97,8 @@ Saved at `{agent-workspace}/config/project-manager.json` by the setup wizard:
 
 ## Index File
 
-Always at `{agent-workspace}/projects-index.json` — never moves, never configurable.
-This makes it trivially findable by any agent or script.
+Always at `{agent-workspace}/projects/projects-index.json` — never moves, never configurable.
+Co-located with local projects, trivially findable by any agent or script.
 
 ## Workspace Resolution
 

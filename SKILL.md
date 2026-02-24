@@ -84,7 +84,7 @@ project roots
 
 ## Index File
 
-Always at: `{agent-workspace}/projects-index.json`
+Always at: `{agent-workspace}/projects/projects-index.json`
 
 ```json
 {
