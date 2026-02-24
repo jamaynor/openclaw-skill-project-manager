@@ -12,11 +12,18 @@ produces the same output given the same inputs.
 
 ## What It Does
 
-- Creates project directories with consistent dated IDs (`2026.02.24-asd-sales-pipeline`)
+- Creates project directories with consistent dated IDs (`2026.02.24-lmb-sales-pipeline`)
 - Supports **local** (agent workspace) and **vault** (Obsidian) project roots
 - Maintains a predictable `projects-index.json` in the agent workspace
 - Seeds each new project with a `README.md`
-- Interview-style `setup` wizard for first-time config
+- Interview-style `init` wizard for first-time config
+
+## Two Binaries
+
+| Binary         | Purpose                                    |
+|----------------|--------------------------------------------|
+| `project`      | Work with projects (create, list, complete, archive) |
+| `project-mgmt` | Configure and inspect the system (init, roots)       |
 
 ## Installation
 
@@ -33,26 +40,29 @@ npx clawhub install project-manager
 ## Quick Start
 
 ```bash
-# 1. Run the setup wizard
-project setup
+# 1. Run the setup wizard (once per agent workspace)
+project-mgmt init
 
 # 2. Create a project in a vault
-project create --name "Sales Pipeline" --root asd-vault --description "Automate lead tracking"
-# → creates: /vaults/asd-vault/1-Projects/2026.02.24-asd-sales-pipeline/
-# → updates: {workspace}/projects-index.json
+project create --name "Sales Pipeline" --root lmb-vault --description "Automate lead tracking"
+# → creates: /vaults/lmb-vault/1-Projects/2026.02.24-lmb-sales-pipeline/
+# → updates: {workspace}/projects/projects-index.json
 
 # 3. Create a project locally (in agent workspace)
 project create --name "Internal Research" --root workspace
 # → creates: {workspace}/projects/2026.02.24-internal-research/
-# → updates: {workspace}/projects-index.json
+# → updates: {workspace}/projects/projects-index.json
 
 # 4. List projects
 project list
-project list --status active --root asd-vault
+project list --status active --root lmb-vault
 
 # 5. Update status
-project complete --id 2026.02.24-asd-sales-pipeline
-project archive  --id 2026.02.24-asd-sales-pipeline
+project complete --id 2026.02.24-lmb-sales-pipeline
+project archive  --id 2026.02.24-lmb-sales-pipeline
+
+# 6. Show configured roots
+project-mgmt roots
 ```
 
 ## Project ID Format
@@ -78,11 +88,11 @@ Saved at `{agent-workspace}/config/project-manager.json` by the setup wizard:
       "description": "Local agent workspace projects"
     },
     {
-      "name": "asd-vault",
+      "name": "lmb-vault",
       "type": "vault",
-      "path": "/vaults/asd-vault/1-Projects",
-      "location": "asd",
-      "description": "AssuranceSD business projects"
+      "path": "/vaults/lmb-vault/1-Projects",
+      "location": "lmb",
+      "description": "Lake Monster Brewing projects"
     },
     {
       "name": "lmb-kc",

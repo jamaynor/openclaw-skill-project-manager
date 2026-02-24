@@ -2,10 +2,11 @@
   "name": "openclaw-skill-project-manager",
   "version": "1.0.0",
   "description": "OpenClaw skill for deterministic project creation and tracking across agent workspaces and Obsidian vaults",
-  "main": "index.js",
   "bin": {
+    "project":      "./bin/project.js",
     "project-mgmt": "./bin/project-mgmt.js"
   },
+  "files": ["bin/", "lib/", "SKILL.md"],
   "scripts": {
     "test": "node test/test.js"
   },
