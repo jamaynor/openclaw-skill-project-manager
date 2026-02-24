@@ -276,6 +276,22 @@ console.log('\nlist');
     }
     assert('list --status completed shows none', noLines.join('\n').includes('No projects found'));
 
+    // Invalid --status value should fail fast
+    let exitCode = null;
+    const origExit  = process.exit;
+    const origError = console.error;
+    process.exit  = (code) => { exitCode = code; throw new Error('exit'); };
+    console.error = () => {};
+    try {
+      list.run(ws3, ['--status', 'bogus']);
+    } catch (e) {
+      if (e.message !== 'exit') throw e;
+    } finally {
+      process.exit  = origExit;
+      console.error = origError;
+    }
+    assertEqual('list --status with invalid value rejected', exitCode, 1);
+
   } finally {
     cleanup(ws3);
   }
