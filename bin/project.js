@@ -31,7 +31,7 @@ Usage:
 
 Global options:
   --workspace <path>   Override agent workspace path
-                       (also: HAL_PROJ_MGR_MASTER_WORKSPACE env var)
+                       (also: HAL_PROG_MGR_MASTER_WORKSPACE env var)
 
 Examples:
   project create --name "Sales Pipeline" --root lmb-vault --due 2026-06-30 \\
@@ -55,7 +55,7 @@ See also: project-mgmt init | project-mgmt roots
 
 try {
   const workspace      = resolveWorkspace(args);
-  const agentWorkspace = resolveAgentWorkspace();
+  const agentWorkspace = resolveAgentWorkspace(args);
 
   switch (cmd) {
     case 'create':
