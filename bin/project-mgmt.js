@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 'use strict';
 
-const { resolveWorkspace } = require('../lib/config');
+const { resolveWorkspace, resolveAgentWorkspace } = require('../lib/config');
 const { runSetup }         = require('../lib/setup');
 const roots                = require('../lib/commands/roots');
 
 const [,, cmd, ...args] = process.argv;
-const workspace = resolveWorkspace(args);
 
 const USAGE = `
-🗂️  project-mgmt — OpenClaw Project Manager Configuration
+project-mgmt — OpenClaw Project Manager Configuration
 
 Usage:
   project-mgmt init                  Configure project roots (local + vaults)
@@ -27,24 +26,34 @@ Examples:
 See also: project create | project list | project complete | project archive
 `.trim();
 
-switch (cmd) {
-  case 'init':
-    runSetup(workspace).catch(err => { console.error(err.message); process.exit(1); });
-    break;
+async function main() {
+  const workspace      = resolveWorkspace(args);
+  const agentWorkspace = resolveAgentWorkspace();
 
-  case 'roots':
-    roots.run(workspace);
-    break;
+  switch (cmd) {
+    case 'init':
+      await runSetup(workspace);
+      break;
 
-  case 'help':
-  case '--help':
-  case '-h':
-  case undefined:
-    console.log(USAGE);
-    break;
+    case 'roots':
+      roots.run(workspace, agentWorkspace);
+      break;
 
-  default:
-    console.error(`Unknown command: ${cmd}`);
-    console.log(USAGE);
-    process.exit(1);
+    case 'help':
+    case '--help':
+    case '-h':
+    case undefined:
+      console.log(USAGE);
+      break;
+
+    default:
+      console.error(`Unknown command: ${cmd}`);
+      console.log(USAGE);
+      process.exit(1);
+  }
 }
+
+main().catch(err => {
+  console.error(err.message);
+  process.exit(1);
+});

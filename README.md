@@ -1,123 +1,112 @@
 # openclaw-skill-project-manager
 
-An [OpenClaw](https://openclaw.ai) community skill for **deterministic project creation
-and tracking** across agent workspaces and Obsidian vaults.
+An [OpenClaw](https://openclaw.ai) skill for **deterministic project creation and tracking** across agent workspaces and Obsidian vaults.
 
-## The Problem
+---
 
-When an AI agent creates projects by reading naming conventions from a document, the
-results are non-deterministic — folder names vary, index files get inconsistent entries,
-and projects end up in the wrong place. This skill fixes that with a CLI that always
-produces the same output given the same inputs.
+## Why this exists
 
-## What It Does
+When AI agents create projects, they do it inconsistently: directories end up in random locations, names vary between sessions, and there is no shared record of what was created. A project made today can't reliably be found or referenced tomorrow — by the same agent or any other.
 
-- Creates project directories with consistent dated IDs (`2026.02.24-lmb-sales-pipeline`)
-- Supports **local** (agent workspace) and **vault** (Obsidian) project roots
-- Maintains a predictable `projects-index.json` in the agent workspace
-- Seeds each new project with a `README.md`
-- Interview-style `init` wizard for first-time config
+This skill gives every project a stable, predictable identity: a dated ID derived from its name, a directory in a location you control, and an entry in a single index file that any agent or tool can read.
 
-## Two Binaries
+---
 
-| Binary         | Purpose                                    |
-|----------------|--------------------------------------------|
-| `project`      | Work with projects (create, list, complete, archive) |
-| `project-mgmt` | Configure and inspect the system (init, roots)       |
+## What it does
+
+- **Creates projects** with a consistent dated ID (`2026.02.24-lmb-sales-pipeline`), a directory, a README charter, and a `tasks.json` task list — all in one command
+- **Tracks projects** in a single index file at a fixed, known path; any agent that knows the workspace path can read it
+- **Lists and filters** projects by status or root; outputs JSON for machine consumption
+- **Manages tasks** within a project: add tasks with required metadata, view them grouped by status
+- **Tracks milestones** with due dates; marks them complete independently of project status
+- **Supports Obsidian vaults** — vault projects are seeded with Dataview-compatible YAML frontmatter and kept in sync when status changes
+- **Requires a due date** on every project and goals text that seeds the task list description
+
+Two binaries are installed:
+
+- **`project`** — work with projects: `create`, `list`, `show`, `tasks`, `task add`, `milestone`, `complete`, `archive`
+- **`project-mgmt`** — configure the system: `init`, `roots`
+
+---
+
+## Quick start
+
+```bash
+# 1. One-time setup — configure where projects live
+project-mgmt init
+
+# 2. Create a project
+project create --name "Sales Pipeline" --root lmb-vault --due 2026-06-30 \
+  --goals "Automate lead tracking from all sources into a single pipeline"
+
+# 3. List projects
+project list
+project list --status active
+project list --json          # machine-readable
+
+# 4. Inspect a project
+project show --id 2026.02.24-lmb-sales-pipeline
+
+# 5. Add a task
+project task add --id 2026.02.24-lmb-sales-pipeline \
+  --title "Map existing lead sources" \
+  --description "Identify all current lead entry points and document them." \
+  --worker-type node \
+  --criteria "All lead sources listed" \
+  --criteria "Owner identified for each source"
+
+# 6. View tasks
+project tasks --id 2026.02.24-lmb-sales-pipeline
+project tasks --id 2026.02.24-lmb-sales-pipeline --json
+
+# 7. Add and complete a milestone
+project milestone add      --id 2026.02.24-lmb-sales-pipeline --name "MVP" --due 2026-04-01
+project milestone complete  --id 2026.02.24-lmb-sales-pipeline --name "MVP"
+
+# 8. Close out a project
+project complete --id 2026.02.24-lmb-sales-pipeline
+project archive  --id 2026.02.24-lmb-sales-pipeline
+```
+
+---
+
+## Project ID format
+
+IDs are derived from the date, an optional location code, and a slugified name:
+
+```
+2026.02.24-lmb-sales-pipeline   # vault root with location code "lmb"
+2026.02.24-internal-tool         # local workspace root (no location)
+```
+
+The same name, date, and root always produce the same ID. Creating a duplicate exits with an error.
+
+---
+
+## Files created per project
+
+| File         | Contents                                                        |
+|--------------|-----------------------------------------------------------------|
+| `README.md`  | Project charter. Vault roots include Obsidian YAML frontmatter. |
+| `tasks.json` | Task list using the ralph.js schema, seeded with your `--goals` as the description. |
+
+---
+
+## Multi-agent use
+
+In a multi-agent setup, one agent owns the shared project index (the "project manager"). Other agents can create projects and have their files land in their own workspace, while the index stays in the PM's workspace.
+
+Set `PROJECT_MANAGER_WORKSPACE` globally (same value on every agent) and `PROJECT_AGENT_WORKSPACE` per agent. See [INSTALL.md](INSTALL.md) for the full setup guide.
 
 ## Installation
 
-```bash
-npm install -g openclaw-skill-project-manager
-```
+See [INSTALL.md](INSTALL.md).
 
-Or via clawhub:
+---
 
-```bash
-npx clawhub install project-manager
-```
+## Project documentation
 
-## Quick Start
-
-```bash
-# 1. Run the setup wizard (once per agent workspace)
-project-mgmt init
-
-# 2. Create a project in a vault
-project create --name "Sales Pipeline" --root lmb-vault --description "Automate lead tracking"
-# → creates: /vaults/lmb-vault/1-Projects/2026.02.24-lmb-sales-pipeline/
-# → updates: {workspace}/projects/projects-index.json
-
-# 3. Create a project locally (in agent workspace)
-project create --name "Internal Research" --root workspace
-# → creates: {workspace}/projects/2026.02.24-internal-research/
-# → updates: {workspace}/projects/projects-index.json
-
-# 4. List projects
-project list
-project list --status active --root lmb-vault
-
-# 5. Update status
-project complete --id 2026.02.24-lmb-sales-pipeline
-project archive  --id 2026.02.24-lmb-sales-pipeline
-
-# 6. Show configured roots
-project-mgmt roots
-```
-
-## Project ID Format
-
-```
-yyyy.mm.dd-{location}-{slug}    # vault root with location code
-yyyy.mm.dd-{slug}               # local workspace root (no location)
-```
-
-## Config File
-
-Saved at `{agent-workspace}/config/project-manager.json` by the setup wizard:
-
-```json
-{
-  "namingConvention": "yyyy.mm.dd-{location}-{slug}",
-  "roots": [
-    {
-      "name": "workspace",
-      "type": "local",
-      "path": "{agent-workspace}/projects",
-      "location": null,
-      "description": "Local agent workspace projects"
-    },
-    {
-      "name": "lmb-vault",
-      "type": "vault",
-      "path": "/vaults/lmb-vault/1-Projects",
-      "location": "lmb",
-      "description": "Lake Monster Brewing projects"
-    },
-    {
-      "name": "lmb-kc",
-      "type": "vault",
-      "path": "/vaults/lmb-kc-vault/1-Projects",
-      "location": "lmb",
-      "description": "Lake Monster / King Coil projects"
-    }
-  ]
-}
-```
-
-## Index File
-
-Always at `{agent-workspace}/projects/projects-index.json` — never moves, never configurable.
-Co-located with local projects, trivially findable by any agent or script.
-
-## Workspace Resolution
-
-The agent workspace is resolved in this order:
-
-1. `--workspace <path>` flag
-2. `PROJECT_AGENT_WORKSPACE` environment variable
-3. Current working directory
-
-## License
-
-MIT
+- [INSTALL.md](INSTALL.md) — installation and first-time setup
+- [SKILL.md](SKILL.md) — OpenClaw skill descriptor and full command reference
+- [docs/charter.md](docs/charter.md) — goals, architecture, integration contract, and ideas backlog
+- [.tasks/tasks.json](.tasks/tasks.json) — development task backlog

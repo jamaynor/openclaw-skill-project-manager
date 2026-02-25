@@ -1,0 +1,381 @@
+{
+  "title": "openclaw-skill-project-manager",
+  "description": "OpenClaw skill for deterministic project creation and tracking across agent workspaces and Obsidian vaults.",
+  "tasks": [
+    {
+      "id": "task-01",
+      "title": "Initial scaffold — package.json, bin stubs, lib structure",
+      "description": "Create the initial project scaffold including package.json with correct metadata, bin entry point stubs, and lib directory structure.",
+      "successCriteria": [
+        "package.json created with correct name, version, and bin entries",
+        "bin/project.js and bin/project-mgmt.js stubs created and executable",
+        "lib/ directory structure in place"
+      ],
+      "status": "completed",
+      "output": "Initial project scaffold committed.",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-02",
+      "title": "Rename binary to project-mgmt; add init / setup wizard",
+      "description": "Rename the management binary to project-mgmt and implement the interactive init wizard for first-time configuration of project roots.",
+      "successCriteria": [
+        "project-mgmt binary installed and functional",
+        "project-mgmt init wizard collects local and vault root config",
+        "project-manager.json written to {workspace}/config/"
+      ],
+      "status": "completed",
+      "output": "project-mgmt binary with init wizard committed.",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-03",
+      "title": "Move projects-index.json into workspace/projects/",
+      "description": "Relocate the projects index file to workspace/projects/ so it is co-located with local project directories and lives at a predictable, stable path.",
+      "successCriteria": [
+        "projects-index.json always at {workspace}/projects/projects-index.json",
+        "All commands read and write index from the new location"
+      ],
+      "status": "completed",
+      "output": "Index path standardized. Commit: b632d0f",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-04",
+      "title": "Split CLI into project / project-mgmt binaries; harden and test",
+      "description": "Separate project commands (create, list, complete, archive) into the project binary and management commands (init, roots) into project-mgmt. Add hardening and initial test coverage.",
+      "successCriteria": [
+        "project binary handles create, list, complete, archive",
+        "project-mgmt binary handles init, roots",
+        "Both binaries exit 1 on unknown commands with usage shown",
+        "Initial tests pass"
+      ],
+      "status": "completed",
+      "output": "Binary split complete. Commit: 100e1d4",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-05",
+      "title": "Validate --status flag input against known statuses",
+      "description": "Add input validation to project list so that --status values are checked against the known set (active, completed, archived) before filtering. Unknown values exit 1.",
+      "successCriteria": [
+        "project list --status bogus exits 1 with a clear error message",
+        "Valid status values filter correctly"
+      ],
+      "status": "completed",
+      "output": "Status validation added. Commit: f63535b",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-06",
+      "title": "Implement create, list, complete, archive, roots commands",
+      "description": "Full implementation of the core command set: create projects with dated IDs, list with filters, mark complete or archived, and display configured roots.",
+      "successCriteria": [
+        "project create creates directory and index entry",
+        "project list filters by --status and --root",
+        "project complete and project archive update index status and set date fields",
+        "project-mgmt roots displays all configured roots with paths and location codes"
+      ],
+      "status": "completed",
+      "output": "Core feature set complete.",
+      "learnings": "",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-07",
+      "title": "Test suite — 42 tests, zero runtime dependencies",
+      "description": "Build a comprehensive test suite using only Node.js built-ins. Cover slugify, buildProjectId, resolveWorkspace, configPath/indexPath, create integration, validation edge cases, list, and status commands.",
+      "successCriteria": [
+        "42 tests pass via node test/test.js",
+        "No third-party test dependencies",
+        "Tests cover happy paths and all validation error exits"
+      ],
+      "status": "completed",
+      "output": "42 tests passing. node test/test.js runs clean with zero dependencies.",
+      "learnings": "Monkeypatching console and process.exit works but is verbose. Worth revisiting with node:test in a future task.",
+      "completedAt": "2026-02-24"
+    },
+    {
+      "id": "task-08",
+      "title": "Code review fixes",
+      "description": "Address all issues identified in code review: shared parseArgs utility, --workspace flag validation, setup.js root preservation on re-init, vault path existence warning, and test coverage gaps (roots command, status --id missing, list --root filter, --workspace with no value).",
+      "successCriteria": [
+        "Shared parseArgs in config.js; local parseArgs removed from all commands",
+        "--workspace with no value exits 1 with clear error",
+        "Re-running project-mgmt init preserves existing roots",
+        "Vault path warning shown when path does not exist at setup time",
+        "42 tests pass including 12 newly added cases"
+      ],
+      "status": "completed",
+      "output": "All code review issues resolved. Test count increased from 30 to 42.",
+      "learnings": "Shared parseArgs is cleaner and eliminates the --workspace skip boilerplate in every command. setup.js root preservation requires seeding config.roots from existingConfig before the wizard runs.",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-09",
+      "title": "Required --due and --goals on project create",
+      "description": "Add --due YYYY-MM-DD and --goals \"...\" as required flags on project create. --due is validated with the same local-date parser as --date. --goals becomes the top-level description in tasks.json and is written to README.md. Omitting either flag exits 1.",
+      "successCriteria": [
+        "project create without --due exits 1",
+        "project create without --goals exits 1",
+        "project create with invalid --due format exits 1",
+        "tasks.json description field matches the --goals value",
+        "README.md includes the goals text",
+        "dueDate stored in index entry"
+      ],
+      "status": "completed",
+      "output": "Required --due and --goals implemented in create.js. dueDate stored in index entry. README.md seeded with Goals section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-10",
+      "title": "project milestone add and project milestone complete",
+      "description": "New lib/commands/milestone.js. The add subcommand appends { name, due, completedDate: null } to the project's milestones array in the index. The complete subcommand sets completedDate to today. Duplicate milestone names within a project exit 1.",
+      "successCriteria": [
+        "project milestone add --id <id> --name <name> --due YYYY-MM-DD appends to milestones array",
+        "project milestone complete --id <id> --name <name> sets completedDate to today",
+        "Duplicate milestone name within a project exits 1",
+        "Unknown project ID exits 1",
+        "Missing --id or --name exits 1"
+      ],
+      "status": "completed",
+      "output": "lib/commands/milestone.js implemented with add and complete subcommands. Frontmatter sync included.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-11",
+      "title": "project show command",
+      "description": "New lib/commands/show.js. Display full index details for a single project by ID: name, status, root, path, all dates (started, due, completed, archived), description, and milestones list with their due dates and completion state.",
+      "successCriteria": [
+        "project show --id <id> prints all index fields in readable format",
+        "Milestones displayed with name, due date, and completion state",
+        "Missing --id exits 1",
+        "Unknown ID exits 1"
+      ],
+      "status": "completed",
+      "output": "lib/commands/show.js implemented.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-12",
+      "title": "Obsidian frontmatter for vault projects",
+      "description": "When a project is created in a vault root, seed README.md with YAML frontmatter including title, id, status, tags, location, started, due, completed, archived, milestones, and description. Local roots get plain markdown only. project complete, project archive, and project milestone complete keep frontmatter in sync with the index.",
+      "successCriteria": [
+        "Vault project README.md has valid YAML frontmatter with all required fields after create",
+        "Local project README.md has no frontmatter after create",
+        "project complete updates status and completed fields in frontmatter",
+        "project archive updates status and archived fields in frontmatter",
+        "project milestone complete updates milestones in frontmatter",
+        "Dataview TABLE status, started, due WHERE contains(tags, 'project') works without additional configuration"
+      ],
+      "status": "completed",
+      "output": "lib/frontmatter.js implemented (buildFrontmatter, extractBody, setFrontmatter). create.js seeds vault frontmatter. status.js and milestone.js sync frontmatter after every write.",
+      "learnings": "Rebuilding frontmatter from the index entry (rather than parsing existing YAML) is simpler and guarantees sync. extractBody + buildFrontmatter + concat is the cleanest pattern.",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-13",
+      "title": "Due date and milestone test coverage",
+      "description": "Add tests for all due date and milestone functionality introduced in tasks 09 and 10.",
+      "successCriteria": [
+        "project create without --due exits 1",
+        "project create with invalid --due format exits 1",
+        "milestone add happy path: entry appears in milestones array",
+        "Duplicate milestone name exits 1",
+        "milestone complete sets completedDate in index",
+        "project show displays milestones with correct fields"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: create (validation) section and milestone section. 161 tests pass.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-14",
+      "title": "Obsidian frontmatter test coverage",
+      "description": "Add tests verifying frontmatter is correctly seeded at project creation and kept in sync on status and milestone changes.",
+      "successCriteria": [
+        "Vault project README.md contains valid YAML frontmatter after create",
+        "Local project README.md contains no frontmatter after create",
+        "Frontmatter status and completed fields updated after project complete",
+        "Frontmatter status and archived fields updated after project archive",
+        "Frontmatter milestones updated after project milestone complete"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: create (vault frontmatter) section and vault frontmatter sync section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-15",
+      "title": "project show test coverage",
+      "description": "Add tests for the project show command introduced in task 11.",
+      "successCriteria": [
+        "Missing --id exits 1",
+        "Unknown ID exits 1",
+        "Happy path output includes name, status, all date fields, and milestones list"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: show section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-16",
+      "title": "Seed tasks.json on project create",
+      "description": "After creating README.md, write tasks.json to the project directory using the ralph.js schema. title comes from project name, description comes from --goals, tasks array starts empty.",
+      "successCriteria": [
+        "tasks.json exists in every new project directory",
+        "tasks.json title matches project name",
+        "tasks.json description matches --goals value",
+        "tasks.json tasks array is empty on creation",
+        "tasks.json is valid JSON matching the ralph.js schema"
+      ],
+      "status": "completed",
+      "output": "tasks.json seeded in create.js. Tests in create (integration) section verify title, description, and empty tasks array.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-17",
+      "title": "project list --json flag",
+      "description": "When --json is passed to project list, emit index.projects (filtered by any --status and --root flags) as a JSON array to stdout. Human-readable output is unchanged when the flag is absent. JSON schema is stable across patch versions.",
+      "successCriteria": [
+        "project list --json emits valid JSON array to stdout",
+        "--status and --root filters apply before JSON output",
+        "Empty result emits [] not an error",
+        "Human-readable output unchanged when --json is absent"
+      ],
+      "status": "completed",
+      "output": "list.js updated with --json flag support via parseArgs boolean detection.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-18",
+      "title": "project tasks command",
+      "description": "New lib/commands/tasks.js (read). Reads {project-dir}/tasks.json. Plain output shows project title, description/goals, then tasks grouped by status. --json passes file content through to stdout unchanged. Missing --id or unknown ID exits 1. Missing or invalid tasks.json exits 1.",
+      "successCriteria": [
+        "project tasks --id <id> displays tasks grouped by status",
+        "project tasks --id <id> --json outputs tasks.json content unchanged",
+        "Missing --id exits 1",
+        "Unknown ID exits 1",
+        "Missing tasks.json warns and exits 1",
+        "Invalid JSON warns and exits 1"
+      ],
+      "status": "completed",
+      "output": "lib/commands/tasks.js implemented.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-19",
+      "title": "project tasks test coverage",
+      "description": "Add tests for the project tasks command introduced in task 18.",
+      "successCriteria": [
+        "Missing --id exits 1",
+        "Unknown ID exits 1",
+        "Missing tasks.json warns and exits 1",
+        "Invalid JSON warns and exits 1",
+        "Happy path human output contains task titles grouped by status",
+        "--json output matches file content exactly"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: tasks (read) section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-20",
+      "title": "project list --json test coverage",
+      "description": "Add tests for the --json flag on project list introduced in task 17.",
+      "successCriteria": [
+        "JSON output is valid and parseable",
+        "Filtered by --status produces correct subset",
+        "Filtered by --root produces correct subset",
+        "Empty result emits [] not an error"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: list --json section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-21",
+      "title": "npm publish + release pipeline",
+      "description": "Set up a tag-triggered GitHub Action that runs the test suite, bumps the version, and publishes to npm. Add CHANGELOG.md.",
+      "successCriteria": [
+        "GitHub Action triggers on version tags (v*.*.*)",
+        "Tests must pass before publish step runs",
+        "npm publish succeeds on a clean machine with no manual steps",
+        "CHANGELOG.md exists and documents notable changes per release"
+      ],
+      "status": "completed",
+      "output": ".github/workflows/publish.yml created (tests on Node 18/20/22, publishes on Node 20). CHANGELOG.md created.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-22",
+      "title": "Verify completionDate preserved on archive",
+      "description": "When archiving a completed project, completionDate should be preserved and not overwritten. Verify this behavior is intentional, document it with a code comment, and add a test that explicitly asserts completionDate is unchanged after project archive runs.",
+      "successCriteria": [
+        "Test explicitly asserts completionDate is unchanged after project archive",
+        "Behavior documented with an inline comment in status.js"
+      ],
+      "status": "completed",
+      "output": "Comment added to status.js. Test 'completionDate preserved after archive' added to test.js status section.",
+      "learnings": "",
+      "completedAt": "2026-02-25"
+    },
+    {
+      "id": "task-23",
+      "title": "project task add command",
+      "description": "New lib/commands/task.js (write). Reads tasks.json, determines next ID by finding the highest existing task-N number and incrementing, appends the new task object, and writes back. Required flags: --id (project ID), --title, --description, --worker-type. Repeatable flag: --criteria (can appear multiple times to build successCriteria array). New task is written with status: \"pending\", output: \"\", learnings: \"\", completedAt: null.",
+      "successCriteria": [
+        "project task add appends a well-formed task object to tasks.json",
+        "Task ID is auto-incremented (task-1, task-2, ...)",
+        "workerType field is written correctly",
+        "successCriteria array is built from one or more --criteria flags",
+        "Missing --id exits 1",
+        "Unknown project ID exits 1",
+        "Missing --title exits 1",
+        "Missing --description exits 1",
+        "Missing --worker-type exits 1",
+        "Missing or invalid tasks.json exits 1"
+      ],
+      "status": "completed",
+      "output": "lib/commands/task.js implemented with add function.",
+      "learnings": "",
+      "completedAt": "2026-02-25",
+      "workerType": "implementer"
+    },
+    {
+      "id": "task-24",
+      "title": "project task add test coverage",
+      "description": "Add tests for the project task add command introduced in task-23.",
+      "successCriteria": [
+        "Missing --id exits 1",
+        "Unknown ID exits 1",
+        "Missing --title, --description, or --worker-type each exit 1",
+        "Happy path: task appended with correct fields including workerType",
+        "Task ID auto-increments correctly on second add",
+        "Multiple --criteria flags build the successCriteria array",
+        "tasks.json remains valid JSON after add"
+      ],
+      "status": "completed",
+      "output": "Covered in test.js: task add section.",
+      "learnings": "",
+      "completedAt": "2026-02-25",
+      "workerType": "implementer"
+    }
+  ]
+}
