@@ -17,7 +17,7 @@ Usage:
 
 Global options:
   --workspace <path>   Override agent workspace path
-                       (also: PROJECT_AGENT_WORKSPACE env var)
+                       (also: HAL_PROJ_MGR_MASTER_WORKSPACE env var)
 
 Examples:
   project-mgmt init

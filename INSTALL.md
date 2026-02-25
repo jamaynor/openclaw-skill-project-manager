@@ -34,55 +34,47 @@ project-mgmt roots    # list configured roots
 project list          # list all projects (empty on a fresh install)
 ```
 
-## Workspace path (single-agent setup)
+## Workspace path
 
 The workspace path resolves in this order:
 
 1. `--workspace <path>` flag passed to any command
-2. `PROJECT_AGENT_WORKSPACE` environment variable
+2. `HAL_PROJ_MGR_MASTER_WORKSPACE` environment variable
 3. Current working directory
 
-Set `PROJECT_AGENT_WORKSPACE` in your shell profile to avoid passing `--workspace` on every command:
+## HAL system configuration
 
-```bash
-export PROJECT_AGENT_WORKSPACE=/path/to/your/workspace
+In a HAL deployment, workspace paths are declared in a central config file rather
+than set individually per container:
+
+**`/data/openclaw/config/system-config.json`**
+```json
+{
+  "version": "1.0",
+  "skills": {
+    "project-manager": {
+      "master-workspace": "/data/agents/project-manager"
+    }
+  }
+}
 ```
 
-## Multi-agent setup
+At container startup, source `hal-env-init.sh` to export `HAL_PROJ_MGR_MASTER_WORKSPACE`
+(and all other skill vars) from this file:
 
-In a multi-agent OpenClaw deployment, one agent owns the project index (the "project manager"), while other agents create and work on projects from their own workspaces.
-
-Two environment variables control this:
-
-| Variable | Purpose |
-|----------|---------|
-| `PROJECT_MANAGER_WORKSPACE` | Where the config and index live — set this to the PM agent's workspace, **the same value on every agent** |
-| `PROJECT_AGENT_WORKSPACE` | The current agent's own workspace — set this **per agent** |
-
-**How workspace resolution works:**
-
-| Priority | Mechanism | Resolves |
-|----------|-----------|---------|
-| 1 | `--workspace` flag | Manager workspace (admin override) |
-| 2 | `PROJECT_MANAGER_WORKSPACE` | Manager workspace |
-| 3 | `PROJECT_AGENT_WORKSPACE` | Manager workspace (single-agent fallback) |
-| 4 | `cwd` | Manager workspace (last resort) |
-
-`PROJECT_AGENT_WORKSPACE` is used separately to expand `{agent-workspace}` in local root paths, so each agent's local projects land in their own workspace even though the index is shared.
-
-**Example — Nyssa is the PM, Marketer is a sub-agent:**
-
-On every agent (shared environment or Docker config):
 ```bash
-export PROJECT_MANAGER_WORKSPACE=/nyssa/workspace
+source /path/to/hal-env-init.sh
 ```
 
-On the marketer agent only:
-```bash
-export PROJECT_AGENT_WORKSPACE=/marketer/workspace
-```
+`project-mgmt init` writes the master workspace into `system-config.json` automatically.
 
-When the marketer runs `project create --root my-vault ...`, the project files go in `/vaults/...` (absolute vault path — unaffected by either variable). When she runs `project create --root local ...`, the files go in `/marketer/workspace/projects/`. Both projects are tracked in Nyssa's index at `/nyssa/workspace/projects/projects-index.json`.
+**Workspace resolution:**
+
+| Priority | Mechanism                        |
+|----------|----------------------------------|
+| 1        | `--workspace` flag               |
+| 2        | `HAL_PROJ_MGR_MASTER_WORKSPACE`  |
+| 3        | Current working directory        |
 
 ## Re-running setup
 

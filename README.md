@@ -96,7 +96,7 @@ The same name, date, and root always produce the same ID. Creating a duplicate e
 
 In a multi-agent setup, one agent owns the shared project index (the "project manager"). Other agents can create projects and have their files land in their own workspace, while the index stays in the PM's workspace.
 
-Set `PROJECT_MANAGER_WORKSPACE` globally (same value on every agent) and `PROJECT_AGENT_WORKSPACE` per agent. See [INSTALL.md](INSTALL.md) for the full setup guide.
+In a HAL deployment, declare the master workspace in `/data/openclaw/config/system-config.json` and source `hal-env-init.sh` at container startup to export `HAL_PROJ_MGR_MASTER_WORKSPACE`. See [INSTALL.md](INSTALL.md) for the full setup guide.
 
 ## Installation
 

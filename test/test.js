@@ -104,40 +104,28 @@ describe('buildProjectId', () => {
 // resolveWorkspace
 // ---------------------------------------------------------------------------
 describe('resolveWorkspace', () => {
-  let origAgent, origManager;
+  let origMaster;
   before(() => {
-    origAgent   = process.env.PROJECT_AGENT_WORKSPACE;
-    origManager = process.env.PROJECT_MANAGER_WORKSPACE;
-    delete process.env.PROJECT_AGENT_WORKSPACE;
-    delete process.env.PROJECT_MANAGER_WORKSPACE;
+    origMaster = process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
   });
   after(() => {
-    if (origAgent   !== undefined) process.env.PROJECT_AGENT_WORKSPACE   = origAgent;
-    else delete process.env.PROJECT_AGENT_WORKSPACE;
-    if (origManager !== undefined) process.env.PROJECT_MANAGER_WORKSPACE = origManager;
-    else delete process.env.PROJECT_MANAGER_WORKSPACE;
+    if (origMaster !== undefined) process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = origMaster;
+    else delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
   });
 
   test('no args, no env → cwd', () => {
-    delete process.env.PROJECT_AGENT_WORKSPACE;
-    delete process.env.PROJECT_MANAGER_WORKSPACE;
+    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
     assert.strictEqual(resolveWorkspace([]), process.cwd());
   });
 
-  test('PROJECT_AGENT_WORKSPACE used when no other override', () => {
-    process.env.PROJECT_AGENT_WORKSPACE = '/tmp/agent-ws';
-    delete process.env.PROJECT_MANAGER_WORKSPACE;
-    assert.strictEqual(resolveWorkspace([]), path.resolve('/tmp/agent-ws'));
+  test('HAL_PROJ_MGR_MASTER_WORKSPACE used when set', () => {
+    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
+    assert.strictEqual(resolveWorkspace([]), path.resolve('/tmp/master-ws'));
   });
 
-  test('PROJECT_MANAGER_WORKSPACE overrides PROJECT_AGENT_WORKSPACE', () => {
-    process.env.PROJECT_AGENT_WORKSPACE   = '/tmp/agent-ws';
-    process.env.PROJECT_MANAGER_WORKSPACE = '/tmp/manager-ws';
-    assert.strictEqual(resolveWorkspace([]), path.resolve('/tmp/manager-ws'));
-  });
-
-  test('--workspace flag overrides PROJECT_MANAGER_WORKSPACE', () => {
-    process.env.PROJECT_MANAGER_WORKSPACE = '/tmp/manager-ws';
+  test('--workspace flag overrides HAL_PROJ_MGR_MASTER_WORKSPACE', () => {
+    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
     assert.strictEqual(resolveWorkspace(['--workspace', '/tmp/override']), path.resolve('/tmp/override'));
   });
 
@@ -150,35 +138,24 @@ describe('resolveWorkspace', () => {
 // resolveAgentWorkspace
 // ---------------------------------------------------------------------------
 describe('resolveAgentWorkspace', () => {
-  let origAgent, origManager;
+  let origMaster;
   before(() => {
-    origAgent   = process.env.PROJECT_AGENT_WORKSPACE;
-    origManager = process.env.PROJECT_MANAGER_WORKSPACE;
-    delete process.env.PROJECT_AGENT_WORKSPACE;
-    delete process.env.PROJECT_MANAGER_WORKSPACE;
+    origMaster = process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
   });
   after(() => {
-    if (origAgent   !== undefined) process.env.PROJECT_AGENT_WORKSPACE   = origAgent;
-    else delete process.env.PROJECT_AGENT_WORKSPACE;
-    if (origManager !== undefined) process.env.PROJECT_MANAGER_WORKSPACE = origManager;
-    else delete process.env.PROJECT_MANAGER_WORKSPACE;
+    if (origMaster !== undefined) process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = origMaster;
+    else delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
   });
 
   test('no env → cwd', () => {
-    delete process.env.PROJECT_AGENT_WORKSPACE;
-    delete process.env.PROJECT_MANAGER_WORKSPACE;
+    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
     assert.strictEqual(resolveAgentWorkspace(), process.cwd());
   });
 
-  test('PROJECT_AGENT_WORKSPACE used when set', () => {
-    process.env.PROJECT_AGENT_WORKSPACE = '/tmp/agent-ws';
-    assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/agent-ws'));
-  });
-
-  test('PROJECT_MANAGER_WORKSPACE has no effect on agent workspace', () => {
-    process.env.PROJECT_AGENT_WORKSPACE   = '/tmp/agent-ws';
-    process.env.PROJECT_MANAGER_WORKSPACE = '/tmp/manager-ws';
-    assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/agent-ws'));
+  test('HAL_PROJ_MGR_MASTER_WORKSPACE used when set', () => {
+    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
+    assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/master-ws'));
   });
 });
 

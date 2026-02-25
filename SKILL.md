@@ -223,9 +223,12 @@ plain markdown with no frontmatter.
 
 ## Environment Variables
 
-| Variable                    | Description                                              |
-|-----------------------------|----------------------------------------------------------|
-| `PROJECT_AGENT_WORKSPACE`   | Path to this agent's workspace (project files land here) |
-| `PROJECT_MANAGER_WORKSPACE` | Path to shared manager workspace (config + index)        |
+| Variable                          | Source              | Description                              |
+|-----------------------------------|---------------------|------------------------------------------|
+| `HAL_PROJ_MGR_MASTER_WORKSPACE`   | `hal-env-init.sh`   | Path to master workspace (config + index)|
 
 Or pass `--workspace <path>` to any command.
+
+`HAL_PROJ_MGR_MASTER_WORKSPACE` is generated at container startup from
+`/data/openclaw/config/system-config.json` by `hal-env-init.sh`. Running
+`project-mgmt init` writes the workspace path into that file automatically.
