@@ -106,26 +106,26 @@ describe('buildProjectId', () => {
 describe('resolveWorkspace', () => {
   let origMaster;
   before(() => {
-    origMaster = process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
-    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    origMaster = process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
   });
   after(() => {
-    if (origMaster !== undefined) process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = origMaster;
-    else delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    if (origMaster !== undefined) process.env.HAL_PROG_MGR_MASTER_WORKSPACE = origMaster;
+    else delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
   });
 
   test('no args, no env → cwd', () => {
-    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
     assert.strictEqual(resolveWorkspace([]), process.cwd());
   });
 
-  test('HAL_PROJ_MGR_MASTER_WORKSPACE used when set', () => {
-    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
+  test('HAL_PROG_MGR_MASTER_WORKSPACE used when set', () => {
+    process.env.HAL_PROG_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
     assert.strictEqual(resolveWorkspace([]), path.resolve('/tmp/master-ws'));
   });
 
-  test('--workspace flag overrides HAL_PROJ_MGR_MASTER_WORKSPACE', () => {
-    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
+  test('--workspace flag overrides HAL_PROG_MGR_MASTER_WORKSPACE', () => {
+    process.env.HAL_PROG_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
     assert.strictEqual(resolveWorkspace(['--workspace', '/tmp/override']), path.resolve('/tmp/override'));
   });
 
@@ -140,21 +140,21 @@ describe('resolveWorkspace', () => {
 describe('resolveAgentWorkspace', () => {
   let origMaster;
   before(() => {
-    origMaster = process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
-    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    origMaster = process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
   });
   after(() => {
-    if (origMaster !== undefined) process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = origMaster;
-    else delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    if (origMaster !== undefined) process.env.HAL_PROG_MGR_MASTER_WORKSPACE = origMaster;
+    else delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
   });
 
   test('no env → cwd', () => {
-    delete process.env.HAL_PROJ_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
     assert.strictEqual(resolveAgentWorkspace(), process.cwd());
   });
 
-  test('HAL_PROJ_MGR_MASTER_WORKSPACE used when set', () => {
-    process.env.HAL_PROJ_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
+  test('HAL_PROG_MGR_MASTER_WORKSPACE used when set', () => {
+    process.env.HAL_PROG_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
     assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/master-ws'));
   });
 });
