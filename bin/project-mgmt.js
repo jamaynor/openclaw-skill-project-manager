@@ -17,7 +17,7 @@ Usage:
 
 Global options:
   --workspace <path>   Override agent workspace path
-                       (also: HAL_PROJ_MGR_MASTER_WORKSPACE env var)
+                       (also: HAL_PROG_MGR_MASTER_WORKSPACE env var)
 
 Examples:
   project-mgmt init
@@ -28,7 +28,7 @@ See also: project create | project list | project complete | project archive
 
 async function main() {
   const workspace      = resolveWorkspace(args);
-  const agentWorkspace = resolveAgentWorkspace();
+  const agentWorkspace = resolveAgentWorkspace(args);
 
   switch (cmd) {
     case 'init':
