@@ -1,7 +1,12 @@
 {
   "name": "openclaw-skill-project-manager",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "OpenClaw skill for deterministic project creation and tracking across agent workspaces and Obsidian vaults",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jamaynor/openclaw-skill-project-manager.git"
+  },
+  "homepage": "https://github.com/jamaynor/openclaw-skill-project-manager",
   "bin": {
     "project":      "./bin/project.js",
     "project-mgmt": "./bin/project-mgmt.js"
