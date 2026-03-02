@@ -13,7 +13,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🗂️",
-        "requires": {},
+        "requires": { "email-triage": "optional" },
         "install":
           [
             {
@@ -220,6 +220,48 @@ milestones:
 Running `project complete` or `project archive` will update both the index and the
 frontmatter in the vault file, keeping them in sync. Local workspace projects remain
 plain markdown with no frontmatter.
+
+## email-triage Integration (Optional)
+
+If the `email-triage` skill is installed, the agent can use its structured
+output to surface project task candidates directly from email without requiring
+the user to describe them manually.
+
+**When to use this:** When the user asks something like "any emails I should
+turn into tasks?", "create tasks from today's email brief", or "what actions
+came in over email?", run `email-triage --json` and filter threads where
+`category == "action-required"` and `project_hint` is set.
+
+**Mapping email-triage fields to project tasks:**
+
+| email-triage field  | project task field          | Notes                                              |
+| ------------------- | --------------------------- | -------------------------------------------------- |
+| `action`            | `--title`                   | GSD discipline applies — confirm with user first   |
+| `summary`           | `--description`             |                                                    |
+| `deadline`          | task due date (in title)    | Remind user to set due date on the project task    |
+| `project_hint`      | `--id` (project lookup)     | Match against active project names; ask if ambiguous |
+| `urgency: critical` | surface first in the list   |                                                    |
+| `attachments`       | mention in description      | Note relevant filenames so user has context        |
+
+**Workflow:**
+
+1. Run `email-triage --json` (only if email-triage is installed).
+2. Filter `threads` where `category == "action-required"`.
+3. For each thread, present the candidate to the user:
+   > "I found an action item from Marie Duval: 'Reply to Marie with Q2
+   > priorities' (deadline: today, project hint: Q2 strategy). Add this as a
+   > task to your Q2 strategy project?"
+4. On confirmation, resolve `project_hint` to a project ID using
+   `project list --json`, then run `project task add`.
+5. If `project_hint` matches no active project, ask the user which project to
+   use or whether to create a new one.
+6. If `project_hint` is null, ask the user which project the task belongs to
+   before adding it.
+
+**Do not bulk-add tasks without confirmation.** Present each candidate
+individually and wait for a response before moving to the next.
+
+---
 
 ## Environment Variables
 
