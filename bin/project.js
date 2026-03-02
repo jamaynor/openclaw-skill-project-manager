@@ -32,6 +32,9 @@ Usage:
 Global options:
   --workspace <path>   Override agent workspace path
                        (also: HAL_PROG_MGR_MASTER_WORKSPACE env var)
+  --agent-workspace <path>
+                       Override creating agent workspace for {agent-workspace}
+                       expansion (also: HAL_AGENT_WORKSPACE env var)
 
 Examples:
   project create --name "Sales Pipeline" --root lmb-vault --due 2026-06-30 \\

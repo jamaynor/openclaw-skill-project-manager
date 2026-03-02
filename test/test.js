@@ -139,23 +139,41 @@ describe('resolveWorkspace', () => {
 // ---------------------------------------------------------------------------
 describe('resolveAgentWorkspace', () => {
   let origMaster;
+  let origAgentWorkspace;
   before(() => {
     origMaster = process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+    origAgentWorkspace = process.env.HAL_AGENT_WORKSPACE;
     delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_AGENT_WORKSPACE;
   });
   after(() => {
     if (origMaster !== undefined) process.env.HAL_PROG_MGR_MASTER_WORKSPACE = origMaster;
     else delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+
+    if (origAgentWorkspace !== undefined) process.env.HAL_AGENT_WORKSPACE = origAgentWorkspace;
+    else delete process.env.HAL_AGENT_WORKSPACE;
   });
 
   test('no env → cwd', () => {
-    delete process.env.HAL_PROG_MGR_MASTER_WORKSPACE;
+    delete process.env.HAL_AGENT_WORKSPACE;
     assert.strictEqual(resolveAgentWorkspace(), process.cwd());
   });
 
-  test('HAL_PROG_MGR_MASTER_WORKSPACE used when set', () => {
-    process.env.HAL_PROG_MGR_MASTER_WORKSPACE = '/tmp/master-ws';
-    assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/master-ws'));
+  test('HAL_AGENT_WORKSPACE used when set', () => {
+    process.env.HAL_AGENT_WORKSPACE = '/tmp/agent-ws';
+    assert.strictEqual(resolveAgentWorkspace(), path.resolve('/tmp/agent-ws'));
+  });
+
+  test('--agent-workspace flag overrides HAL_AGENT_WORKSPACE', () => {
+    process.env.HAL_AGENT_WORKSPACE = '/tmp/agent-ws';
+    assert.strictEqual(
+      resolveAgentWorkspace(['--agent-workspace', '/tmp/override-agent']),
+      path.resolve('/tmp/override-agent')
+    );
+  });
+
+  test('--agent-workspace with no value throws', () => {
+    assert.throws(() => resolveAgentWorkspace(['--agent-workspace']), /--agent-workspace requires a path argument/);
   });
 });
 
