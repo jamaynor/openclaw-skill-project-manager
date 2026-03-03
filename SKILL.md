@@ -154,43 +154,39 @@ Every project directory contains two seeded files:
 **`README.md`** — the project charter. Vault roots include YAML frontmatter; local roots use
 plain markdown. H2 sections are standardized so consuming skills can parse by heading.
 
-**`tasks.json`** — the project task list, using the ralph.js schema:
+**`tasks.md`** — the project task list in human-readable markdown:
 
-```json
-{
-  "title": "Sales Pipeline",
-  "description": "Automate lead tracking from all sources into a single pipeline",
-  "tasks": [
-    {
-      "id": "task-1",
-      "title": "Map existing lead sources",
-      "description": "Identify all current lead entry points and document them.",
-      "successCriteria": [
-        "All lead sources listed",
-        "Owner identified for each source"
-      ],
-      "workerType": "node",
-      "status": "completed",
-      "output": "Found 4 sources: web form, email, Salesforce import, manual entry.",
-      "learnings": "Manual entry accounts for 40% of leads — biggest automation opportunity.",
-      "completedAt": "2026-02-25 09:00:00"
-    },
-    {
-      "id": "task-2",
-      "title": "Design automation flow",
-      "description": "Draft the automated pipeline for each lead source.",
-      "successCriteria": ["Flow diagram approved", "Edge cases documented"],
-      "workerType": "node",
-      "status": "pending",
-      "output": "",
-      "learnings": "",
-      "completedAt": null
-    }
-  ]
-}
+```markdown
+# Sales Pipeline
+
+> Automate lead tracking from all sources into a single pipeline
+
+## Tasks
+
+- [x] Map existing lead sources `task-1` `node` done:2026-02-25
+  Identify all current lead entry points and document them.
+  output: Found 4 sources: web form, email, Salesforce import, manual entry.
+  learnings: Manual entry accounts for 40% of leads — biggest automation opportunity.
+  - [x] All lead sources listed
+  - [x] Owner identified for each source
+
+- [ ] Design automation flow `task-2` `node`
+  Draft the automated pipeline for each lead source.
+  - [ ] Flow diagram approved
+  - [ ] Edge cases documented
 ```
 
-`project tasks --json` passes the file content through to stdout unchanged.
+**Status mapping:**
+- `- [ ]` = pending (or `in-progress` if tagged after metadata)
+- `- [x]` = completed (with optional `done:YYYY-MM-DD`)
+- `- [-]` = cancelled
+
+**Inline metadata:** `` `task-N` `` `` `workerType` `` followed by optional status keywords.
+
+**Migration:** If `tasks.md` is missing but `tasks.json` exists, the tool auto-converts
+to markdown and deletes the JSON file.
+
+`project tasks --json` outputs a JSON representation of the parsed task data.
 `project tasks` (no flag) prints a human-readable summary grouped by status.
 
 ## Obsidian Frontmatter

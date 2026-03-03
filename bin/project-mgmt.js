@@ -2,6 +2,7 @@
 'use strict';
 
 const { resolveWorkspace, resolveAgentWorkspace } = require('../lib/config');
+const log                  = require('../lib/logger');
 const { runSetup }         = require('../lib/setup');
 const roots                = require('../lib/commands/roots');
 
@@ -33,30 +34,38 @@ async function main() {
   const workspace      = resolveWorkspace(args);
   const agentWorkspace = resolveAgentWorkspace(args);
 
-  switch (cmd) {
-    case 'init':
-      await runSetup(workspace);
-      break;
+  log.init({ command: cmd || 'help', workspace });
 
-    case 'roots':
-      roots.run(workspace, agentWorkspace);
-      break;
+  try {
+    switch (cmd) {
+      case 'init':
+        await runSetup(workspace);
+        break;
 
-    case 'help':
-    case '--help':
-    case '-h':
-    case undefined:
-      console.log(USAGE);
-      break;
+      case 'roots':
+        roots.run(workspace, agentWorkspace);
+        break;
 
-    default:
-      console.error(`Unknown command: ${cmd}`);
-      console.log(USAGE);
-      process.exit(1);
+      case 'help':
+      case '--help':
+      case '-h':
+      case undefined:
+        console.log(USAGE);
+        break;
+
+      default:
+        console.error(`Unknown command: ${cmd}`);
+        console.log(USAGE);
+        process.exit(1);
+    }
+  } finally {
+    log.close();
   }
 }
 
 main().catch(err => {
+  log.error('command failed', { error: err.message });
+  log.close();
   console.error(err.message);
   process.exit(1);
 });

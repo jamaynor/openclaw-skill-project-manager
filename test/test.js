@@ -56,6 +56,8 @@ const taskCmd      = require('../lib/commands/task');
 const milestoneCmd = require('../lib/commands/milestone');
 const roots        = require('../lib/commands/roots');
 const { extractBody, setFrontmatter } = require('../lib/frontmatter');
+const tasksMd      = require('../lib/tasks-md');
+const log          = require('../lib/logger');
 
 // ---------------------------------------------------------------------------
 // Constants shared across test sections
@@ -256,7 +258,7 @@ describe('create (integration)', () => {
 
   test('project directory created',    () => assert.ok(fs.existsSync(path.join(ws, 'projects', id))));
   test('README.md seeded',             () => assert.ok(fs.existsSync(path.join(ws, 'projects', id, 'README.md'))));
-  test('tasks.json seeded',            () => assert.ok(fs.existsSync(path.join(ws, 'projects', id, 'tasks.json'))));
+  test('tasks.md seeded',              () => assert.ok(fs.existsSync(path.join(ws, 'projects', id, 'tasks.md'))));
 
   test('one entry in index', () => {
     assert.strictEqual(JSON.parse(fs.readFileSync(indexPath(ws), 'utf8')).projects.length, 1);
@@ -274,14 +276,17 @@ describe('create (integration)', () => {
     assert.strictEqual(JSON.parse(fs.readFileSync(indexPath(ws), 'utf8')).projects[0].dueDate, '2026-12-31');
   });
 
-  test('tasks.json title', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(ws, 'projects', id, 'tasks.json'), 'utf8')).title, 'Test Project');
+  test('tasks.md title', () => {
+    const data = tasksMd.read(path.join(ws, 'projects', id));
+    assert.strictEqual(data.title, 'Test Project');
   });
-  test('tasks.json description', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(ws, 'projects', id, 'tasks.json'), 'utf8')).description, 'Test goals');
+  test('tasks.md description', () => {
+    const data = tasksMd.read(path.join(ws, 'projects', id));
+    assert.strictEqual(data.description, 'Test goals');
   });
-  test('tasks.json tasks empty', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(ws, 'projects', id, 'tasks.json'), 'utf8')).tasks.length, 0);
+  test('tasks.md tasks empty', () => {
+    const data = tasksMd.read(path.join(ws, 'projects', id));
+    assert.strictEqual(data.tasks.length, 0);
   });
 
   test('--date omitted: project id starts with today', () => {
@@ -648,21 +653,19 @@ describe('show', () => {
 describe('tasks (read)', () => {
   let ws;
   const id      = '2026.02.24-tasks-project';
-  let projDir, tasksFile;
+  let projDir;
 
   before(() => {
     ws = makeWorkspaceWithConfig();
     silent(() => create.run(ws, ws, ['--name', 'Tasks Project', '--root', 'workspace', '--date', '2026-02-24', '--due', '2026-12-31', '--goals', 'Project goals text']));
-    projDir   = path.join(ws, 'projects', id);
-    tasksFile = path.join(projDir, 'tasks.json');
-    // Add a task directly
-    const existing = JSON.parse(fs.readFileSync(tasksFile, 'utf8'));
-    existing.tasks.push({
-      id: 'task-1', title: 'Do something', description: 'Details here',
-      successCriteria: [], workerType: 'node', status: 'pending',
-      output: '', learnings: '', completedAt: null,
+    projDir = path.join(ws, 'projects', id);
+    // Add a task via the module
+    tasksMd.addTask(projDir, {
+      title: 'Do something',
+      description: 'Details here',
+      successCriteria: [],
+      workerType: 'node',
     });
-    fs.writeFileSync(tasksFile, JSON.stringify(existing, null, 2) + '\n');
   });
   after(() => cleanup(ws));
 
@@ -678,9 +681,13 @@ describe('tasks (read)', () => {
   test('shows PENDING group', () => {
     assert.ok(captureLog(() => tasksCmd.run(ws, ['--id', id])).join('\n').includes('PENDING'));
   });
-  test('--json output matches file content', () => {
-    const rawFile = fs.readFileSync(tasksFile, 'utf8').trimEnd();
-    assert.strictEqual(captureLog(() => tasksCmd.run(ws, ['--id', id, '--json'])).join('\n'), rawFile);
+  test('--json output is valid JSON with correct structure', () => {
+    const jsonOut = captureLog(() => tasksCmd.run(ws, ['--id', id, '--json'])).join('\n');
+    const parsed = JSON.parse(jsonOut);
+    assert.strictEqual(parsed.title, 'Tasks Project');
+    assert.strictEqual(parsed.description, 'Project goals text');
+    assert.strictEqual(parsed.tasks.length, 1);
+    assert.strictEqual(parsed.tasks[0].title, 'Do something');
   });
 
   test('without --id throws', () => {
@@ -690,7 +697,7 @@ describe('tasks (read)', () => {
     assert.throws(() => tasksCmd.run(ws, ['--id', 'bad-id']), /not found/);
   });
 
-  test('missing tasks.json throws', () => {
+  test('missing task file throws', () => {
     const projDir2 = path.join(ws, 'projects', '2026.02.24-fake');
     fs.mkdirSync(projDir2, { recursive: true });
     const idx = loadIndex(ws);
@@ -700,21 +707,126 @@ describe('tasks (read)', () => {
       completionDate: null, archivedDate: null, status: 'active', description: '', milestones: [],
     });
     saveIndex(ws, idx);
-    assert.throws(() => tasksCmd.run(ws, ['--id', '2026.02.24-fake']), /not found/);
+    assert.throws(() => tasksCmd.run(ws, ['--id', '2026.02.24-fake']), /No task file found/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tasks-md migration
+// ---------------------------------------------------------------------------
+describe('tasks-md migration', () => {
+  let ws, projDir;
+
+  before(() => {
+    ws = makeTmpWorkspace();
+    projDir = path.join(ws, 'test-project');
+    fs.mkdirSync(projDir, { recursive: true });
+  });
+  after(() => cleanup(ws));
+
+  test('auto-migrates tasks.json to tasks.md', () => {
+    const jsonData = {
+      title: 'Migration Test',
+      description: 'Test auto-migration',
+      tasks: [
+        {
+          id: 'task-1', title: 'First task', description: 'Do it',
+          successCriteria: ['Done well'], workerType: 'node', status: 'completed',
+          output: 'Result here', learnings: 'Learned stuff', completedAt: '2026-02-25 09:00:00',
+        },
+        {
+          id: 'task-2', title: 'Second task', description: 'Do this too',
+          successCriteria: [], workerType: 'testing', status: 'pending',
+          output: '', learnings: '', completedAt: null,
+        },
+      ],
+    };
+    fs.writeFileSync(path.join(projDir, 'tasks.json'), JSON.stringify(jsonData, null, 2));
+
+    const result = tasksMd.read(projDir);
+
+    // JSON file should be deleted
+    assert.ok(!fs.existsSync(path.join(projDir, 'tasks.json')));
+    // MD file should exist
+    assert.ok(fs.existsSync(path.join(projDir, 'tasks.md')));
+
+    assert.strictEqual(result.title, 'Migration Test');
+    assert.strictEqual(result.tasks.length, 2);
+    assert.strictEqual(result.tasks[0].status, 'completed');
+    assert.strictEqual(result.tasks[0].output, 'Result here');
+    assert.strictEqual(result.tasks[1].status, 'pending');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tasks-md render/parse round-trip
+// ---------------------------------------------------------------------------
+describe('tasks-md round-trip', () => {
+  test('empty tasks round-trips', () => {
+    const data = { title: 'Empty', description: 'No tasks', tasks: [] };
+    const result = tasksMd.parse(tasksMd.render(data));
+    assert.strictEqual(result.title, 'Empty');
+    assert.strictEqual(result.description, 'No tasks');
+    assert.strictEqual(result.tasks.length, 0);
   });
 
-  test('invalid JSON tasks.json throws', () => {
-    const projDir3 = path.join(ws, 'projects', '2026.02.24-badjson');
-    fs.mkdirSync(projDir3, { recursive: true });
-    fs.writeFileSync(path.join(projDir3, 'tasks.json'), 'not json');
-    const idx2 = loadIndex(ws);
-    idx2.projects.push({
-      id: '2026.02.24-badjson', name: 'Bad JSON', root: 'workspace', rootType: 'local',
-      path: projDir3, location: null, startDate: '2026-02-24', dueDate: '2026-12-31',
-      completionDate: null, archivedDate: null, status: 'active', description: '', milestones: [],
-    });
-    saveIndex(ws, idx2);
-    assert.throws(() => tasksCmd.run(ws, ['--id', '2026.02.24-badjson']), /not valid JSON/);
+  test('completed task with date round-trips', () => {
+    const data = {
+      title: 'Project',
+      description: 'Goals here',
+      tasks: [{
+        id: 'task-1', title: 'Done task', description: 'Was done',
+        successCriteria: ['Crit A', 'Crit B'], workerType: 'node',
+        status: 'completed', output: 'Output val', learnings: 'Learned val',
+        completedAt: '2026-02-25',
+      }],
+    };
+    const result = tasksMd.parse(tasksMd.render(data));
+    assert.strictEqual(result.tasks[0].status, 'completed');
+    assert.strictEqual(result.tasks[0].completedAt, '2026-02-25');
+    assert.strictEqual(result.tasks[0].output, 'Output val');
+    assert.strictEqual(result.tasks[0].learnings, 'Learned val');
+    assert.strictEqual(result.tasks[0].successCriteria.length, 2);
+  });
+
+  test('in-progress task round-trips', () => {
+    const data = {
+      title: 'P', description: 'D',
+      tasks: [{
+        id: 'task-1', title: 'Working', description: '',
+        successCriteria: [], workerType: 'node',
+        status: 'in-progress', output: '', learnings: '', completedAt: null,
+      }],
+    };
+    const result = tasksMd.parse(tasksMd.render(data));
+    assert.strictEqual(result.tasks[0].status, 'in-progress');
+  });
+
+  test('cancelled task round-trips', () => {
+    const data = {
+      title: 'P', description: 'D',
+      tasks: [{
+        id: 'task-1', title: 'Nope', description: '',
+        successCriteria: [], workerType: 'node',
+        status: 'cancelled', output: '', learnings: '', completedAt: null,
+      }],
+    };
+    const result = tasksMd.parse(tasksMd.render(data));
+    assert.strictEqual(result.tasks[0].status, 'cancelled');
+  });
+
+  test('no description round-trips', () => {
+    const data = {
+      title: 'P', description: '',
+      tasks: [{
+        id: 'task-1', title: 'Bare', description: '',
+        successCriteria: [], workerType: 'node',
+        status: 'pending', output: '', learnings: '', completedAt: null,
+      }],
+    };
+    const result = tasksMd.parse(tasksMd.render(data));
+    assert.strictEqual(result.description, '');
+    assert.strictEqual(result.tasks[0].description, '');
   });
 });
 
@@ -724,12 +836,12 @@ describe('tasks (read)', () => {
 describe('task add', () => {
   let ws;
   const id = '2026.02.24-task-add-project';
-  let tasksFile;
+  let projDir;
 
   before(() => {
     ws = makeWorkspaceWithConfig();
     silent(() => create.run(ws, ws, ['--name', 'Task Add Project', '--root', 'workspace', '--date', '2026-02-24', '--due', '2026-12-31', '--goals', 'g']));
-    tasksFile = path.join(ws, 'projects', id, 'tasks.json');
+    projDir = path.join(ws, 'projects', id);
     silent(() => taskCmd.add(ws, [
       '--id', id,
       '--title', 'First Task',
@@ -742,28 +854,28 @@ describe('task add', () => {
   after(() => cleanup(ws));
 
   test('one task added', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks.length, 1);
+    assert.strictEqual(tasksMd.read(projDir).tasks.length, 1);
   });
   test('task id is task-1', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].id, 'task-1');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].id, 'task-1');
   });
   test('task title', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].title, 'First Task');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].title, 'First Task');
   });
   test('task description', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].description, 'First task description');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].description, 'First task description');
   });
   test('task workerType', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].workerType, 'node');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].workerType, 'node');
   });
   test('task status is pending', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].status, 'pending');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].status, 'pending');
   });
   test('task output is empty string', () => {
-    assert.strictEqual(JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].output, '');
+    assert.strictEqual(tasksMd.read(projDir).tasks[0].output, '');
   });
   test('task successCriteria is array with 2 items', () => {
-    const sc = JSON.parse(fs.readFileSync(tasksFile, 'utf8')).tasks[0].successCriteria;
+    const sc = tasksMd.read(projDir).tasks[0].successCriteria;
     assert.ok(Array.isArray(sc));
     assert.strictEqual(sc.length, 2);
     assert.strictEqual(sc[0], 'Criterion A');
@@ -772,9 +884,9 @@ describe('task add', () => {
 
   test('second task id auto-increments to task-2', () => {
     silent(() => taskCmd.add(ws, ['--id', id, '--title', 'Second Task', '--description', 'Second description', '--worker-type', 'testing']));
-    const tj = JSON.parse(fs.readFileSync(tasksFile, 'utf8'));
-    assert.strictEqual(tj.tasks.length, 2);
-    assert.strictEqual(tj.tasks[1].id, 'task-2');
+    const data = tasksMd.read(projDir);
+    assert.strictEqual(data.tasks.length, 2);
+    assert.strictEqual(data.tasks[1].id, 'task-2');
   });
 
   test('task add without --id throws', () => {
@@ -798,7 +910,7 @@ describe('task add', () => {
       const nocrId = '2026.02.24-no-criteria';
       silent(() => create.run(wsTmp, wsTmp, ['--name', 'No Criteria', '--root', 'workspace', '--date', '2026-02-24', '--due', '2026-12-31', '--goals', 'g']));
       silent(() => taskCmd.add(wsTmp, ['--id', nocrId, '--title', 'T', '--description', 'd', '--worker-type', 'node']));
-      const sc = JSON.parse(fs.readFileSync(path.join(wsTmp, 'projects', nocrId, 'tasks.json'), 'utf8')).tasks[0].successCriteria;
+      const sc = tasksMd.read(path.join(wsTmp, 'projects', nocrId)).tasks[0].successCriteria;
       assert.ok(Array.isArray(sc));
       assert.strictEqual(sc.length, 0);
     } finally {
@@ -887,5 +999,116 @@ describe('frontmatter', () => {
   test('setFrontmatter body-less: no extra content after closing ---', () => {
     const rebuilt = setFrontmatter(noBody, proj);
     assert.strictEqual(rebuilt.slice(rebuilt.lastIndexOf('\n---\n') + 5), '');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// logger
+// ---------------------------------------------------------------------------
+describe('logger', () => {
+  after(() => { log._reset(); });
+
+  test('write + read cycle — JSON line with expected fields', () => {
+    const tmp = makeTmpWorkspace();
+    try {
+      const logFile = path.join(tmp, 'test.log');
+      process.env.PM_LOG_FILE  = logFile;
+      process.env.PM_LOG_LEVEL = 'info';
+      log._reset();
+      log.init({ command: 'create', workspace: tmp });
+      log.info('project created', { id: '2026.03.03-foo' });
+      log.close();
+      const lines = fs.readFileSync(logFile, 'utf8').trim().split('\n');
+      assert.strictEqual(lines.length, 1);
+      const entry = JSON.parse(lines[0]);
+      assert.strictEqual(entry.level, 'info');
+      assert.strictEqual(entry.command, 'create');
+      assert.strictEqual(entry.message, 'project created');
+      assert.deepStrictEqual(entry.data, { id: '2026.03.03-foo' });
+      assert.ok(entry.ts);
+    } finally {
+      delete process.env.PM_LOG_FILE;
+      delete process.env.PM_LOG_LEVEL;
+      log._reset();
+      cleanup(tmp);
+    }
+  });
+
+  test('level filtering — PM_LOG_LEVEL=error suppresses debug/info/warn', () => {
+    const tmp = makeTmpWorkspace();
+    try {
+      const logFile = path.join(tmp, 'test.log');
+      process.env.PM_LOG_FILE  = logFile;
+      process.env.PM_LOG_LEVEL = 'error';
+      log._reset();
+      log.init({ command: 'test', workspace: tmp });
+      log.debug('d');
+      log.info('i');
+      log.warn('w');
+      log.error('e');
+      log.close();
+      const lines = fs.readFileSync(logFile, 'utf8').trim().split('\n');
+      assert.strictEqual(lines.length, 1);
+      assert.strictEqual(JSON.parse(lines[0]).level, 'error');
+    } finally {
+      delete process.env.PM_LOG_FILE;
+      delete process.env.PM_LOG_LEVEL;
+      log._reset();
+      cleanup(tmp);
+    }
+  });
+
+  test('graceful failure — unwritable path does not throw', () => {
+    process.env.PM_LOG_FILE  = '/nonexistent/deeply/nested/dir/test.log';
+    process.env.PM_LOG_LEVEL = 'info';
+    log._reset();
+    log.init({ command: 'test' });
+    // Should not throw
+    log.info('hello');
+    log.close();
+    delete process.env.PM_LOG_FILE;
+    delete process.env.PM_LOG_LEVEL;
+    log._reset();
+  });
+
+  test('command context — command field matches init value', () => {
+    const tmp = makeTmpWorkspace();
+    try {
+      const logFile = path.join(tmp, 'test.log');
+      process.env.PM_LOG_FILE  = logFile;
+      process.env.PM_LOG_LEVEL = 'info';
+      log._reset();
+      log.init({ command: 'milestone complete', workspace: tmp });
+      log.info('done');
+      log.close();
+      const entry = JSON.parse(fs.readFileSync(logFile, 'utf8').trim());
+      assert.strictEqual(entry.command, 'milestone complete');
+    } finally {
+      delete process.env.PM_LOG_FILE;
+      delete process.env.PM_LOG_LEVEL;
+      log._reset();
+      cleanup(tmp);
+    }
+  });
+
+  test('data field — absent when not provided', () => {
+    const tmp = makeTmpWorkspace();
+    try {
+      const logFile = path.join(tmp, 'test.log');
+      process.env.PM_LOG_FILE  = logFile;
+      process.env.PM_LOG_LEVEL = 'info';
+      log._reset();
+      log.init({ command: 'test', workspace: tmp });
+      log.info('no data');
+      log.close();
+      const entry = JSON.parse(fs.readFileSync(logFile, 'utf8').trim());
+      assert.strictEqual(entry.data, undefined);
+      assert.ok(!('data' in entry));
+    } finally {
+      delete process.env.PM_LOG_FILE;
+      delete process.env.PM_LOG_LEVEL;
+      log._reset();
+      cleanup(tmp);
+    }
   });
 });

@@ -2,6 +2,7 @@
 'use strict';
 
 const { resolveWorkspace, resolveAgentWorkspace } = require('../lib/config');
+const log       = require('../lib/logger');
 const create    = require('../lib/commands/create');
 const list      = require('../lib/commands/list');
 const status    = require('../lib/commands/status');
@@ -60,66 +61,76 @@ try {
   const workspace      = resolveWorkspace(args);
   const agentWorkspace = resolveAgentWorkspace(args);
 
-  switch (cmd) {
-    case 'create':
-      create.run(workspace, agentWorkspace, args);
-      break;
+  // Derive a human-readable command string for log context
+  const subCmd = (cmd === 'task' || cmd === 'milestone') ? `${cmd} ${args[0] || ''}`.trim() : cmd;
+  log.init({ command: subCmd || 'help', workspace });
 
-    case 'list':
-      list.run(workspace, args);
-      break;
+  try {
+    switch (cmd) {
+      case 'create':
+        create.run(workspace, agentWorkspace, args);
+        break;
 
-    case 'show':
-      show.run(workspace, args);
-      break;
+      case 'list':
+        list.run(workspace, args);
+        break;
 
-    case 'tasks':
-      tasksCmd.run(workspace, args);
-      break;
+      case 'show':
+        show.run(workspace, args);
+        break;
 
-    case 'task':
-      if (args[0] === 'add') {
-        taskCmd.add(workspace, args);
-      } else {
-        console.error(`Unknown subcommand: task ${args[0]}`);
+      case 'tasks':
+        tasksCmd.run(workspace, args);
+        break;
+
+      case 'task':
+        if (args[0] === 'add') {
+          taskCmd.add(workspace, args);
+        } else {
+          console.error(`Unknown subcommand: task ${args[0]}`);
+          console.log('\n' + USAGE);
+          process.exit(1);
+        }
+        break;
+
+      case 'milestone':
+        if (args[0] === 'add') {
+          milestone.add(workspace, args);
+        } else if (args[0] === 'complete') {
+          milestone.complete(workspace, args);
+        } else {
+          console.error(`Unknown subcommand: milestone ${args[0]}`);
+          console.log('\n' + USAGE);
+          process.exit(1);
+        }
+        break;
+
+      case 'complete':
+        status.run(workspace, args, 'completed');
+        break;
+
+      case 'archive':
+        status.run(workspace, args, 'archived');
+        break;
+
+      case 'help':
+      case '--help':
+      case '-h':
+      case undefined:
+        console.log(USAGE);
+        break;
+
+      default:
+        console.error(`Unknown command: ${cmd}`);
         console.log('\n' + USAGE);
         process.exit(1);
-      }
-      break;
-
-    case 'milestone':
-      if (args[0] === 'add') {
-        milestone.add(workspace, args);
-      } else if (args[0] === 'complete') {
-        milestone.complete(workspace, args);
-      } else {
-        console.error(`Unknown subcommand: milestone ${args[0]}`);
-        console.log('\n' + USAGE);
-        process.exit(1);
-      }
-      break;
-
-    case 'complete':
-      status.run(workspace, args, 'completed');
-      break;
-
-    case 'archive':
-      status.run(workspace, args, 'archived');
-      break;
-
-    case 'help':
-    case '--help':
-    case '-h':
-    case undefined:
-      console.log(USAGE);
-      break;
-
-    default:
-      console.error(`Unknown command: ${cmd}`);
-      console.log('\n' + USAGE);
-      process.exit(1);
+    }
+  } finally {
+    log.close();
   }
 } catch (e) {
+  log.error('command failed', { error: e.message });
+  log.close();
   console.error(e.message);
   process.exit(1);
 }
