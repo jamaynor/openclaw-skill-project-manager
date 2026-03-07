@@ -1,136 +1,193 @@
 #!/usr/bin/env node
-'use strict';
 
-const { resolveWorkspace, resolveAgentWorkspace } = require('../lib/config');
-const log       = require('../lib/logger');
-const create    = require('../lib/commands/create');
-const list      = require('../lib/commands/list');
-const status    = require('../lib/commands/status');
-const show      = require('../lib/commands/show');
-const tasksCmd  = require('../lib/commands/tasks');
-const taskCmd   = require('../lib/commands/task');
-const milestone = require('../lib/commands/milestone');
+import { Command } from 'commander';
+import { resolveWorkspace, resolveAgentWorkspace } from '../lib/config.js';
+import * as log       from '../lib/logger.js';
+import * as create    from '../lib/commands/create.js';
+import * as list      from '../lib/commands/list.js';
+import * as statusCmd from '../lib/commands/status.js';
+import * as show      from '../lib/commands/show.js';
+import * as tasksCmd  from '../lib/commands/tasks.js';
+import * as taskCmd   from '../lib/commands/task.js';
+import * as milestone from '../lib/commands/milestone.js';
+import * as blockerCmd from '../lib/commands/blocker.js';
 
-const [,, cmd, ...args] = process.argv;
+let workspace;
+let agentWorkspace;
 
-const USAGE = `
-project — OpenClaw Project Commands
+const program = new Command();
 
-Usage:
-  project create --name <name> --root <root> --due YYYY-MM-DD --goals "..."
-                 [--description <desc>] [--date YYYY-MM-DD] [--workspace <path>]
-  project list   [--root <root>] [--status active|completed|archived] [--json]
-  project show   --id <project-id>
-  project tasks  --id <project-id> [--json]
-  project task   add --id <project-id> --title "..." --description "..."
-                     --worker-type <type> [--criteria "..."] [--criteria "..."]
-  project milestone add      --id <project-id> --name <name> --due YYYY-MM-DD
-  project milestone complete --id <project-id> --name <name>
-  project complete --id <project-id>
-  project archive  --id <project-id>
-  project help
+program
+  .name('project')
+  .description('OpenClaw Project Commands')
+  .option('--workspace <path>', 'Override agent workspace (also: HAL_PROG_MGR_MASTER_WORKSPACE)')
+  .option('--agent-workspace <path>', 'Override creating agent workspace (also: HAL_AGENT_WORKSPACE)');
 
-Global options:
-  --workspace <path>   Override agent workspace path
-                       (also: HAL_PROG_MGR_MASTER_WORKSPACE env var)
-  --agent-workspace <path>
-                       Override creating agent workspace for {agent-workspace}
-                       expansion (also: HAL_AGENT_WORKSPACE env var)
+program.hook('preAction', (thisCommand, actionCommand) => {
+  const g = program.opts();
+  workspace      = resolveWorkspace(g.workspace);
+  agentWorkspace = resolveAgentWorkspace(g.agentWorkspace, g.workspace);
+  log.init({ command: actionCommand.name(), workspace });
+});
 
-Examples:
-  project create --name "Sales Pipeline" --root lmb-vault --due 2026-06-30 \\
-    --goals "Automate lead tracking from all sources into a single pipeline"
-  project list
-  project list --status active --root lmb-vault
-  project list --json
-  project show  --id 2026.02.24-lmb-sales-pipeline
-  project tasks --id 2026.02.24-lmb-sales-pipeline
-  project tasks --id 2026.02.24-lmb-sales-pipeline --json
-  project task add --id 2026.02.24-lmb-sales-pipeline --title "Map sources" \\
-    --description "Identify all lead entry points" --worker-type node \\
-    --criteria "All sources listed" --criteria "Owner identified"
-  project milestone add      --id 2026.02.24-lmb-sales-pipeline --name "MVP" --due 2026-04-01
-  project milestone complete  --id 2026.02.24-lmb-sales-pipeline --name "MVP"
-  project complete --id 2026.02.24-lmb-sales-pipeline
-  project archive  --id 2026.02.24-lmb-sales-pipeline
-
-See also: project-mgmt init | project-mgmt roots
-`.trim();
-
-try {
-  const workspace      = resolveWorkspace(args);
-  const agentWorkspace = resolveAgentWorkspace(args);
-
-  // Derive a human-readable command string for log context
-  const subCmd = (cmd === 'task' || cmd === 'milestone') ? `${cmd} ${args[0] || ''}`.trim() : cmd;
-  log.init({ command: subCmd || 'help', workspace });
-
-  try {
-    switch (cmd) {
-      case 'create':
-        create.run(workspace, agentWorkspace, args);
-        break;
-
-      case 'list':
-        list.run(workspace, args);
-        break;
-
-      case 'show':
-        show.run(workspace, args);
-        break;
-
-      case 'tasks':
-        tasksCmd.run(workspace, args);
-        break;
-
-      case 'task':
-        if (args[0] === 'add') {
-          taskCmd.add(workspace, args);
-        } else {
-          console.error(`Unknown subcommand: task ${args[0]}`);
-          console.log('\n' + USAGE);
-          process.exit(1);
-        }
-        break;
-
-      case 'milestone':
-        if (args[0] === 'add') {
-          milestone.add(workspace, args);
-        } else if (args[0] === 'complete') {
-          milestone.complete(workspace, args);
-        } else {
-          console.error(`Unknown subcommand: milestone ${args[0]}`);
-          console.log('\n' + USAGE);
-          process.exit(1);
-        }
-        break;
-
-      case 'complete':
-        status.run(workspace, args, 'completed');
-        break;
-
-      case 'archive':
-        status.run(workspace, args, 'archived');
-        break;
-
-      case 'help':
-      case '--help':
-      case '-h':
-      case undefined:
-        console.log(USAGE);
-        break;
-
-      default:
-        console.error(`Unknown command: ${cmd}`);
-        console.log('\n' + USAGE);
-        process.exit(1);
-    }
-  } finally {
-    log.close();
-  }
-} catch (e) {
-  log.error('command failed', { error: e.message });
+program.hook('postAction', () => {
   log.close();
-  console.error(e.message);
+});
+
+// project create
+program
+  .command('create')
+  .description('Create a new project')
+  .requiredOption('--name <name>', 'Project name')
+  .requiredOption('--root <root>', 'Root name')
+  .requiredOption('--due <date>', 'Due date (YYYY-MM-DD)')
+  .requiredOption('--goals <goals>', 'Project goals')
+  .option('--description <desc>', 'Brief description')
+  .option('--date <date>', 'Creation date override (YYYY-MM-DD)')
+  .option('--json', 'Emit JSON output')
+  .action((opts) => {
+    create.run(workspace, agentWorkspace, opts);
+  });
+
+// project list
+program
+  .command('list')
+  .description('List projects')
+  .option('--root <root>', 'Filter by root name')
+  .option('--status <status>', 'Filter by status (active|completed|archived)')
+  .option('--json', 'Emit JSON output')
+  .action((opts) => {
+    list.run(workspace, agentWorkspace, opts);
+  });
+
+// project show
+program
+  .command('show')
+  .description('Show project details')
+  .requiredOption('--id <id>', 'Project ID')
+  .option('--json', 'Emit JSON output')
+  .action((opts) => {
+    show.run(workspace, agentWorkspace, opts);
+  });
+
+// project tasks
+program
+  .command('tasks')
+  .description('List tasks for a project')
+  .requiredOption('--id <id>', 'Project ID')
+  .option('--json', 'Emit JSON output')
+  .action((opts) => {
+    tasksCmd.run(workspace, agentWorkspace, opts);
+  });
+
+// project task add / complete / update / cancel (nested)
+const taskCmd2 = program.command('task').description('Task operations');
+taskCmd2
+  .command('add')
+  .description('Add a task to a project milestone')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--milestone <ref>', 'Milestone UUID or positional code (e.g. M-1)')
+  .requiredOption('--title <title>', 'Task title')
+  .option('--description <desc>', 'Task description')
+  .option('--json', 'Emit JSON output')
+  .action((opts) => {
+    taskCmd.add(workspace, opts);
+  });
+
+taskCmd2
+  .command('complete')
+  .description('Mark a task as complete by UUID')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--task <uuid>', 'Task UUID (t-{uuid})')
+  .action((opts) => {
+    taskCmd.complete(workspace, opts);
+  });
+
+taskCmd2
+  .command('update')
+  .description('Update a task title and/or description by UUID')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--task <uuid>', 'Task UUID (t-{uuid})')
+  .option('--title <title>', 'New task title')
+  .option('--description <desc>', 'New task description')
+  .action((opts) => {
+    taskCmd.update(workspace, opts);
+  });
+
+taskCmd2
+  .command('cancel')
+  .description('Cancel a task by UUID')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--task <uuid>', 'Task UUID (t-{uuid})')
+  .option('--reason <text>', 'Cancellation reason (stored as description)')
+  .action((opts) => {
+    taskCmd.cancel(workspace, opts);
+  });
+
+// project milestone add / complete (nested)
+const milestoneCmd = program.command('milestone').description('Milestone operations');
+milestoneCmd
+  .command('add')
+  .description('Add a milestone to a project')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--name <name>', 'Milestone name')
+  .requiredOption('--due <date>', 'Due date (YYYY-MM-DD)')
+  .action((opts) => {
+    milestone.add(workspace, opts);
+  });
+
+milestoneCmd
+  .command('complete')
+  .description('Mark a milestone as complete')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--name <name>', 'Milestone name')
+  .action((opts) => {
+    milestone.complete(workspace, opts);
+  });
+
+// project blocker add / resolve (nested)
+const blockerCmdGroup = program.command('blocker').description('Blocker operations');
+blockerCmdGroup
+  .command('add')
+  .description('Add a blocker to a project')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--description <text>', 'Blocker description')
+  .requiredOption('--waiting-on <name>', 'Who or what is being waited on')
+  .requiredOption('--affects <refs>', 'Comma-separated list of milestone or task UUIDs')
+  .action((opts) => {
+    blockerCmd.add(workspace, opts);
+  });
+
+blockerCmdGroup
+  .command('resolve')
+  .description('Resolve a blocker by UUID')
+  .requiredOption('--id <id>', 'Project ID')
+  .requiredOption('--blocker <uuid>', 'Blocker UUID (b-{uuid})')
+  .action((opts) => {
+    blockerCmd.resolve(workspace, opts);
+  });
+
+// project complete
+program
+  .command('complete')
+  .description('Mark a project as complete')
+  .requiredOption('--id <id>', 'Project ID')
+  .action((opts) => {
+    statusCmd.run(workspace, agentWorkspace, opts, 'completed');
+  });
+
+// project archive
+program
+  .command('archive')
+  .description('Archive a project')
+  .requiredOption('--id <id>', 'Project ID')
+  .action((opts) => {
+    statusCmd.run(workspace, agentWorkspace, opts, 'archived');
+  });
+
+program.parseAsync(process.argv).catch(err => {
+  log.error('command failed', { error: err.message });
+  log.close();
+  console.error(err.message);
   process.exit(1);
-}
+});

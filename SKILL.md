@@ -3,17 +3,16 @@ name: project-manager
 description: >
   Create and track projects deterministically across agent workspaces and Obsidian
   vaults. Use when creating a new project, listing active projects, inspecting a
-  project's details, marking a project complete or archived, or setting up project
-  tracking for the first time. Projects are created with consistent dated IDs and
-  tracked in a predictable index file. Vault projects are seeded with Obsidian
-  Dataview-compatible YAML frontmatter that stays in sync with project status.
+  project's details, adding milestones or tasks, marking a project complete or
+  archived, or running a portfolio sweep. Every project lives in a single
+  self-contained project-index.md file. The Program Manager runs sweep to build
+  a dated global index across the entire portfolio.
 homepage: https://github.com/jamaynor/openclaw-skill-project-manager
 metadata:
   {
     "openclaw":
       {
         "emoji": "🗂️",
-        "requires": { "email-triage": "optional" },
         "install":
           [
             {
@@ -21,22 +20,23 @@ metadata:
               "kind": "node",
               "package": "openclaw-skill-project-manager",
               "bins": ["project", "project-mgmt"],
-              "label": "Install project-manager skill (node)",
-            },
-          ],
-      },
+              "label": "Install project-manager skill (node)"
+            }
+          ]
+      }
   }
 ---
 
 # project-manager
 
 Create and track projects deterministically. Every project gets a consistent
-dated ID, a directory in the right place (vault or local workspace), and an
-entry in `projects-index.json` in your agent workspace.
+dated ID, a directory in the right place (vault or local workspace), and a
+single `project-index.md` file that holds the full project record — frontmatter,
+charter, milestones, tasks, and subtasks.
 
 Two binaries are installed:
-- **`project`** — work with individual projects (create, list, show, tasks, complete, archive, milestone)
-- **`project-mgmt`** — configure and inspect the system (init, roots)
+- **`project`** — work with individual projects (create, list, show, tasks, task, milestone, complete, archive)
+- **`project-mgmt`** — configure and inspect the system (init, roots, sweep, migrate)
 
 ## First-Time Setup
 
@@ -90,21 +90,22 @@ project list --status active --json
 # Inspect a single project
 project show --id 2026.02.24-lmb-sales-pipeline
 
-# Add a task to a project
+# Add a milestone (--due is required)
+project milestone add --id 2026.02.24-lmb-sales-pipeline --name "MVP" --due 2026-04-01
+
+# Mark a milestone complete
+project milestone complete --id 2026.02.24-lmb-sales-pipeline --name "MVP"
+
+# Add a task to a project (--milestone is required — accepts UUID or positional code e.g. M-1)
 project task add --id 2026.02.24-lmb-sales-pipeline \
+  --milestone M-1 \
   --title "Map existing lead sources" \
   --description "Identify all current lead entry points and document them." \
-  --worker-type node \
-  --criteria "All lead sources listed" \
-  --criteria "Owner identified for each source"
+  --worker-type node
 
 # Read a project's task list
 project tasks --id 2026.02.24-lmb-sales-pipeline
 project tasks --id 2026.02.24-lmb-sales-pipeline --json
-
-# Add and complete milestones
-project milestone add      --id 2026.02.24-lmb-sales-pipeline --name "MVP" --due 2026-04-01
-project milestone complete  --id 2026.02.24-lmb-sales-pipeline --name "MVP"
 
 # Mark complete or archive
 project complete --id 2026.02.24-lmb-sales-pipeline
@@ -119,79 +120,18 @@ project-mgmt init
 
 # Show configured roots
 project-mgmt roots
+
+# Aggregate all project-index.md files into a dated global index
+project-mgmt sweep
+
+# Bulk-migrate old README.md + tasks.md projects to project-index.md format
+project-mgmt migrate
 ```
 
-## Index File
+## Per-Project File: `project-index.md`
 
-Always at: `{agent-workspace}/projects/projects-index.json`
-
-```json
-{
-  "version": "1.0",
-  "projects": [
-    {
-      "id": "2026.02.24-lmb-sales-pipeline",
-      "name": "Sales Pipeline Automation",
-      "root": "lmb-vault",
-      "rootType": "vault",
-      "path": "/vaults/lmb-vault/1-Projects/2026.02.24-lmb-sales-pipeline",
-      "location": "lmb",
-      "startDate": "2026-02-24",
-      "completionDate": null,
-      "archivedDate": null,
-      "status": "active",
-      "description": "Automate lead tracking"
-    }
-  ],
-  "lastUpdated": "2026-02-24T10:00:00Z"
-}
-```
-
-## Per-Project Files
-
-Every project directory contains two seeded files:
-
-**`README.md`** — the project charter. Vault roots include YAML frontmatter; local roots use
-plain markdown. H2 sections are standardized so consuming skills can parse by heading.
-
-**`tasks.md`** — the project task list in human-readable markdown:
-
-```markdown
-# Sales Pipeline
-
-> Automate lead tracking from all sources into a single pipeline
-
-## Tasks
-
-- [x] Map existing lead sources `task-1` `node` done:2026-02-25
-  Identify all current lead entry points and document them.
-  output: Found 4 sources: web form, email, Salesforce import, manual entry.
-  learnings: Manual entry accounts for 40% of leads — biggest automation opportunity.
-  - [x] All lead sources listed
-  - [x] Owner identified for each source
-
-- [ ] Design automation flow `task-2` `node`
-  Draft the automated pipeline for each lead source.
-  - [ ] Flow diagram approved
-  - [ ] Edge cases documented
-```
-
-**Status mapping:**
-- `- [ ]` = pending (or `in-progress` if tagged after metadata)
-- `- [x]` = completed (with optional `done:YYYY-MM-DD`)
-- `- [-]` = cancelled
-
-**Inline metadata:** `` `task-N` `` `` `workerType` `` followed by optional status keywords.
-
-**Migration:** If `tasks.md` is missing but `tasks.json` exists, the tool auto-converts
-to markdown and deletes the JSON file.
-
-`project tasks --json` outputs a JSON representation of the parsed task data.
-`project tasks` (no flag) prints a human-readable summary grouped by status.
-
-## Obsidian Frontmatter
-
-Vault projects are seeded with YAML frontmatter for Obsidian Dataview:
+Every project directory contains exactly one file: `project-index.md`. It holds
+the complete project record — frontmatter, charter, milestones, tasks, and subtasks.
 
 ```markdown
 ---
@@ -200,28 +140,61 @@ id: 2026.02.24-lmb-sales-pipeline
 status: active
 tags:
   - project
-location: lmb
 started: 2026-02-24
 due: 2026-06-30
 completed:
 archived:
 description: "Automate lead tracking"
-milestones:
-  - name: MVP
-    due: 2026-04-01
-    completedDate:
+path: /vaults/lmb-vault/1-Projects/2026.02.24-lmb-sales-pipeline
+last-touched: 2026-02-24
 ---
+
+# Sales Pipeline
+
+> Automate lead tracking from all sources into a single pipeline
+> Lead:
+> Due: 2026-06-30
+
+## M-1: Discovery (id:m-{uuid})
+
+- [ ] M1-T1: Map existing lead sources (id:t-{uuid})
+  - [ ] M1-T1-S1: All sources listed (id:s-{uuid})
+  - [ ] M1-T1-S2: Owner identified for each source (id:s-{uuid})
+
+- [x] M1-T2: Define automation scope (id:t-{uuid}) done:2026-02-25
 ```
 
-Running `project complete` or `project archive` will update both the index and the
-frontmatter in the vault file, keeping them in sync. Local workspace projects remain
-plain markdown with no frontmatter.
+**Entity identity:**
+- Every milestone, task, and subtask receives a UUID at creation (`id:m-`, `id:t-`, `id:s-`)
+- Positional codes (`M-1`, `M1-T1`, `M1-T1-S1`) are human-readable labels and are recalculated on render
+- UUIDs are permanent — they survive reordering and renaming
+- `--milestone` on `project task add` accepts either a UUID or a positional code
+
+**Status mapping:**
+- `- [ ]` = pending
+- `- [x]` = completed (with optional `done:YYYY-MM-DD`)
+- `- [-]` = cancelled
+
+## Global Project Index
+
+The portfolio view lives in a dated file at:
+
+```
+{workspace}/projects/yyyy.mm.dd-global-project-index.md
+```
+
+`project-mgmt sweep` walks all configured roots, reads every `project-index.md`,
+and writes a new dated global index. The Program Manager agent owns this file
+and runs sweep to keep the portfolio view current. `project list` and `project show`
+read the most recent dated global index file for lookups.
+
+`project create` appends the new project to the current global index immediately
+on creation.
 
 ## email-triage Integration (Optional)
 
 If the `email-triage` skill is installed, the agent can use its structured
-output to surface project task candidates directly from email without requiring
-the user to describe them manually.
+output to surface project task candidates directly from email.
 
 **When to use this:** When the user asks something like "any emails I should
 turn into tasks?", "create tasks from today's email brief", or "what actions
@@ -230,14 +203,14 @@ came in over email?", run `email-triage --json` and filter threads where
 
 **Mapping email-triage fields to project tasks:**
 
-| email-triage field  | project task field          | Notes                                              |
-| ------------------- | --------------------------- | -------------------------------------------------- |
-| `action`            | `--title`                   | GSD discipline applies — confirm with user first   |
-| `summary`           | `--description`             |                                                    |
-| `deadline`          | task due date (in title)    | Remind user to set due date on the project task    |
+| email-triage field  | project task field          | Notes                                                |
+| ------------------- | --------------------------- | ---------------------------------------------------- |
+| `action`            | `--title`                   | GSD discipline applies — confirm with user first     |
+| `summary`           | `--description`             |                                                      |
+| `deadline`          | task due date (in title)    | Remind user to set due date on the project task      |
 | `project_hint`      | `--id` (project lookup)     | Match against active project names; ask if ambiguous |
-| `urgency: critical` | surface first in the list   |                                                    |
-| `attachments`       | mention in description      | Note relevant filenames so user has context        |
+| `urgency: critical` | surface first in the list   |                                                      |
+| `attachments`       | mention in description      | Note relevant filenames so user has context          |
 
 **Workflow:**
 
@@ -261,9 +234,9 @@ individually and wait for a response before moving to the next.
 
 ## Environment Variables
 
-| Variable                          | Source              | Description                              |
-|-----------------------------------|---------------------|------------------------------------------|
-| `HAL_PROJ_MGR_MASTER_WORKSPACE`   | `hal-env-init.sh`   | Path to master workspace (config + index)|
+| Variable                          | Source              | Description                                   |
+|-----------------------------------|---------------------|-----------------------------------------------|
+| `HAL_PROJ_MGR_MASTER_WORKSPACE`   | `hal-env-init.sh`   | Path to master workspace (config + index)     |
 
 Or pass `--workspace <path>` to any command.
 

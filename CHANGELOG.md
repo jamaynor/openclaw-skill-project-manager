@@ -2,32 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.2.0] — 2026-03-07
 
 ### Added
-- `project create` now requires `--due YYYY-MM-DD` (exits 1 if omitted or invalid)
-- `project create` now requires `--goals "..."` (exits 1 if omitted); goals become the top-level `description` in `tasks.json`
-- `tasks.json` seeded in every new project directory using the ralph.js schema (`{ title, description, tasks[] }`)
-- `project show --id <id>` — display full project details including all dates and milestones
-- `project tasks --id <id>` — human-readable task list grouped by status
-- `project tasks --id <id> --json` — pass `tasks.json` content through to stdout unchanged
-- `project task add` — append a new task to `tasks.json` with auto-incremented ID; required flags: `--id`, `--title`, `--description`, `--worker-type`; repeatable: `--criteria`
-- `project milestone add --id <id> --name <name> --due YYYY-MM-DD` — add a named milestone
-- `project milestone complete --id <id> --name <name>` — mark a milestone complete
-- `project list --json` — emit filtered projects array as JSON
-- Obsidian-compatible YAML frontmatter seeded in vault project `README.md` at creation
-- Frontmatter kept in sync on `project complete`, `project archive`, and `project milestone complete`
-- `dueDate` and `milestones` fields added to index entries
-- GitHub Actions workflow: tests on Node 18, 20, 22; publishes on version tags (`v*.*.*`)
+- **Project UUID in frontmatter** — `project-uuid: p-{uuid}` field added to `project-index.md` at creation; `migrate` patches legacy projects inline
+- **`project show --json`** — emits full live project record (frontmatter + milestones/tasks/blockers) as JSON
+- **`project list` task summary** — each row shows task count (e.g. `3/7 tasks done`) derived from global index data
+- **Due date warnings on `project list`** — active projects flagged with `[OVERDUE]` or `[DUE SOON]` inline; warning window (`dueSoonDays`, default 7) stored in `hal-project-manager.json`
+- **`project-mgmt init` non-interactive mode** — `--project-manager-agent <id>` and `--vaults-root <path>` flags skip the interactive wizard for headless container init
+- **`project-mgmt prune`** — removes dated global index files older than a retention window (default 30 days, `--days <n>`); archives to PARA vault before deleting
+- **Sweep archiving** — completed/archived projects render as a single summary line in the global index (no milestone/task detail)
+- **Blocker tracking** — `project blocker add` and `project blocker resolve`; `## Blockers` section in `project-index.md`; open blockers surfaced in sweep output
+- **Task lifecycle commands** — `project task complete`, `project task update`, `project task cancel` with UUID-based lookup and date recording
+- **Task description child lines** — descriptions stored as indented `> text` lines beneath task lines in `project-index.md`
+- **`project-mgmt migrate`** and **`project-mgmt sweep`** commands
+- **email-triage integration test** — `test/integration.test.js` mocking the full email-triage-to-task-add workflow
 
 ### Changed
-- `parseArgs` now captures boolean flags (`--json` → `true`) and accumulates repeated flags (`--criteria`) into arrays
-- `bin/project.js` updated with full USAGE including all new commands
+- **ESM migration** — entire codebase converted from CommonJS to ESM (`"type": "module"`); all `require()`/`module.exports` replaced with `import`/`export`
+- **Commander CLI** — `bin/project.js` and `bin/project-mgmt.js` rewritten using `commander`; hand-written arg parser removed
+- **Pino logger** — `lib/logger.js` replaced with pino-based implementation; same external interface preserved
+- **`project-index.md` as single source of truth** — all project data lives in one self-contained markdown file with YAML frontmatter
+- **Config filename** — config stored at `{workspace}/config/hal-project-manager.json`
+- **`--worker-type` removed** — flag dropped from `project task add` (was stored but never used)
+- **`resolveWorkspace` / `resolveAgentWorkspace`** — signatures updated to accept string values instead of raw argv arrays
+- **`parseArgs` removed** from `lib/config.js`
 
-## [1.0.0] — Initial release (planned)
+### Dependencies
+- Added `commander ^12.0.0`
+- Added `pino ^9.0.0`
+- Node engine requirement raised to `>=22`
+
+## [0.1.0] — Initial release
 
 - `project create`, `list`, `complete`, `archive`
+- `project show`, `project tasks`, `project task add`
+- `project milestone add`, `project milestone complete`
 - `project-mgmt init`, `roots`
-- Shared index at `{workspace}/projects/projects-index.json`
-- Config at `{workspace}/config/project-manager.json`
-- Zero runtime dependencies; Node >=18
+- `project list --json`
+- Self-contained `project-index.md` with YAML frontmatter
+- UUID identity for all entities (projects, milestones, tasks, subtasks, blockers)
+- Structured JSON-line logging via `lib/logger.js`
+- 221+ tests using Node built-in test runner

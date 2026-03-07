@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18 or later
+- Node.js 22 or later
 
 ## Install
 
@@ -25,7 +25,7 @@ The wizard asks for:
 - **Local root** — a directory inside your agent workspace for local projects (e.g. `{agent-workspace}/projects/`)
 - **Vault roots** — one or more Obsidian vault folders (e.g. `/vaults/lmb-vault/1-Projects/`); each gets a short **location code** used in project IDs (e.g. `lmb`)
 
-Configuration is saved to `{workspace}/config/project-manager.json`.
+Configuration is saved to `{workspace}/config/hal.project-manager.json`.
 
 ## Verify the installation
 

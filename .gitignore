@@ -3,3 +3,5 @@ node_modules/
 *.log
 projects/
 vault/
+agent-os/
+.*
